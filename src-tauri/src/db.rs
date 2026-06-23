@@ -118,16 +118,18 @@ pub struct HotelRow {
 }
 
 #[tauri::command]
-pub fn list_hotels(app: AppHandle) -> Result<Vec<HotelRow>, String> {
+pub fn list_hotels(app: AppHandle, limit: Option<i64>) -> Result<Vec<HotelRow>, String> {
     let conn = open_db(&app)?;
-    let mut stmt = conn
-        .prepare(
-            "SELECT osm_type, osm_id, name, city, country, website, phone, lat, lon, source,
+    // Con archivi grandi (decine di migliaia) carichiamo i più rilevanti (voto più alto) per restare scattanti.
+    let lim = limit.unwrap_or(5000).clamp(1, 200000);
+    let sql = format!(
+        "SELECT osm_type, osm_id, name, city, country, website, phone, lat, lon, source,
                 family_fit_score, score_breakdown, enrichment
-             FROM hotels
-             ORDER BY (family_fit_score IS NULL), family_fit_score DESC, name COLLATE NOCASE",
-        )
-        .map_err(|e| e.to_string())?;
+         FROM hotels
+         ORDER BY (family_fit_score IS NULL), family_fit_score DESC, name COLLATE NOCASE
+         LIMIT {lim}"
+    );
+    let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map([], |r| {
             Ok(HotelRow {

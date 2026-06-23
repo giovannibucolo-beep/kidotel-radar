@@ -94,7 +94,7 @@ export default function App() {
   // Carica l'archivio salvato (SQLite) all'avvio: i dati raccolti persistono tra le sessioni.
   async function loadArchive() {
     try {
-      const rows = await invoke<HotelRow[]>("list_hotels");
+      const rows = await invoke<HotelRow[]>("list_hotels", { limit: 5000 });
       const hs: Hotel[] = [];
       const sc: Record<string, EnrichResult> = {};
       for (const r of rows) {
@@ -115,7 +115,7 @@ export default function App() {
       }
       setHotels(hs);
       setScores(sc);
-      if (hs.length > 0) setArea(t("archive.label"));
+      if (hs.length > 0) setArea(t("archive.label") + (hs.length >= 5000 ? " " + t("archive.capped") : ""));
     } catch {
       /* nel browser di anteprima non c'è Tauri: nessun archivio da caricare */
     }

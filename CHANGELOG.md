@@ -2,6 +2,10 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.3.3] — 2026-06-24
+### Migliorato
+- **Prestazioni con archivi grandi** (49k+ hotel): `list_hotels` ora carica i più rilevanti (voto più alto) con un limite (default 5000) invece di tutti → app scattante. Didascalia "primi 5000 per voto" quando l'archivio è più grande. (Filtri/scansione per area restano per il resto.)
+
 ## [0.3.2] — 2026-06-23
 ### Aggiunto
 - **Scansione mondiale incrementale** `scripts/world-scan.mjs`: scandaglia a tappe ~58 zone family di tutti i continenti (Nominatim → Overpass → inserimento nel DB con dedup), **riprendibile** (stato in `scripts/.world-scan-done.json`) e **incrementabile** (rilancia / aggiungi zone). Verificato live: DB cresciuto 10.091 → 14.000+ in pochi minuti.
