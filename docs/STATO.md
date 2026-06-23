@@ -2,7 +2,7 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.2.6` (installata su macOS)
+- **Versione:** `0.2.7` (installata su macOS)
 - **Aggiornato:** 2026-06-23
 
 ## Fatto
@@ -22,6 +22,7 @@
 - v0.2.4: **scansione = solo l'area** (non più l'archivio intero) + pulsante "Mostra archivio salvato"; **Overpass con 3 server in cascata** (mondiale robusto). Scoperta mondiale verificata live (6/6 destinazioni).
 - v0.2.5: statistiche **per-area** utili (Valutati, Family hotel ≥70) al posto della "media sempre 9"; **TLS di sistema (native-tls)** → recuperati i siti che davano 0 pagine. Diagnostica scoring verificata su hotel reali (family 66-86, città 0-14).
 - v0.2.6: **Vista Mappa** (Leaflet/OSM, pin colorati per family-fit) + selettore Tabella↔Mappa; `docs/ARCHITETTURA.md` (struttura solida, valutatore sostituibile); primo componente estratto `MapView`.
+- v0.2.7: **dizionario multilingue** (~70 lingue, 3165 termini) come file dato `src-tauri/src/signals.json` caricato dal motore (`signal_defs()`); filtro anti-falsi-positivi; verificato live (recupero su, città non gonfiate). Script `scripts/build-signals.mjs` rigenera il file dall'output del workflow.
 
 ## Prossimo passo strutturale (prima di altre feature)
 - Refactor Rust in moduli `discovery`/`crawl`/`scoring` con interfaccia **`Scorer`** (RuleScorer ora, AiScorer v0.3).

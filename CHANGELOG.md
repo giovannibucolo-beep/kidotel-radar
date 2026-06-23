@@ -2,6 +2,15 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.2.7] — 2026-06-23
+### Aggiunto
+- **Dizionario family-fit multilingue** (~70 lingue ufficiali di Stati sovrani, **3165 termini**) generato con workflow multi-agente, con filtro anti-falsi-positivi (no parole singole troppo generiche).
+- **Struttura dati pulita**: i termini sono ora un file esterno `src-tauri/src/signals.json` caricato una volta dal motore (`signal_defs()` + OnceLock), invece che hard-coded. Più estensibile/manutenibile.
+### Verificato (live, dati reali)
+- Recupero migliorato senza effetti collaterali: Schwarzenstein 66→76, Cavallino Bianco 14→26; Feuerstein 86 e Sonnwies 66 invariati; hotel di città restano corretti (Greif 0, Laurin 14) → nessun falso positivo nonostante 3165 termini.
+### Nota onesta
+- Resta il tetto del crawl (siti JS/contenuti in pagine profonde): più lingue ≠ tutto risolto. La qualità mondiale piena è l'AiScorer (v0.3).
+
 ## [0.2.6] — 2026-06-23
 ### Aggiunto
 - **Vista Mappa** (Leaflet + OpenStreetMap, nessuna chiave): pin di tutti gli hotel dell'area colorati per family-fit (verde ≥70, ambra 40–69, grigio sotto/non valutato), con popup nome+voto+sito. Selettore **Tabella ↔ Mappa**. Verificato nel frontend (Alto Adige).

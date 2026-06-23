@@ -3,7 +3,7 @@
 > Documento unico di continuità. Se il contesto della chat si esaurisce, **ripartire da qui**.
 > Leggere nell'ordine: questo file → `docs/STATO.md` (dove siamo) → `docs/ROADMAP.md` (dove andiamo) → `docs/DECISIONI.md` (perché così).
 
-- **Versione corrente:** `0.2.6` (compilata e installata su macOS)
+- **Versione corrente:** `0.2.7` (compilata e installata su macOS)
 - **Percorso progetto:** `~/dev/kidotel-radar`
 - **Ultimo aggiornamento:** 2026-06-23
 
