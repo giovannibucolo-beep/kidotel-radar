@@ -8,6 +8,17 @@ Supera il tetto del metodo a regole: l'AI **legge e capisce** il sito di ogni ho
    > Per ogni hotel in questo file apri il sito (`website`), leggi le pagine rilevanti in qualsiasi lingua e valuta quanto è adatto alle famiglie (family_fit_score 0–100). Per ogni servizio family trovato aggiungi a `breakdown` un elemento con `key` (kids_club | kids_facilities | family_rooms | childcare | kids_dining | activities_age | safety), `present: true`, `quote` (frase citata dal sito) e `url`. **Non inventare**: se non c'è prova sul sito, niente punto. Restituisci un JSON con chiave `results`, mantenendo lo stesso `id` di ogni hotel. Salvalo come `results.json`.
 3. **Nell'app** → **"Importa valutazioni AI"** → selezioni `results.json`. I voti entrano nel database (sorgente "ai-cowork") e compaiono in tabella/mappa.
 
+## Modo automatico (script) — consigliato
+Invece di affidarsi alla chat, usa lo script deterministico che produce esattamente `results.json`:
+```bash
+# nel progetto, con Claude Code loggato (claude login). Nessuna chiave API.
+node scripts/score-batch.mjs kidotel-ai-batch.json results.json
+# opzioni: CLAUDE_MODEL=opus  CHUNK=6  SLEEP_MS=500
+```
+Per ogni gruppo di hotel lancia `claude -p … --allowedTools WebFetch --permission-mode dontAsk --output-format json`: l'AI apre i siti, valuta e cita. Lo script **salva dopo ogni gruppo ed è riprendibile** (rilanciandolo salta i già valutati). Poi in app → **Importa valutazioni AI** → `results.json`.
+- Flag verificati con `claude --help`; output `.result` confermato; logica (chunk/parse/scrittura/ripresa) verificata con stub.
+- Se vedi errore 401: esegui prima `claude login`.
+
 ## Formato
 **Export (app → Cowork):** `{ app, task, istruzioni, schema_risultati, hotels: [{ id, name, website, city, country }] }`
 **Import (Cowork → app):** `{ "results": [ { "id": "node/123", "family_fit_score": 0-100, "breakdown": [ { "key", "present", "quote", "url" } ] } ] }`

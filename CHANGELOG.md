@@ -6,6 +6,7 @@ Tutte le modifiche rilevanti. Formato: [versione] — data.
 ### Aggiunto
 - **AiScorer via Cowork (ponte a lotti).** Sidebar "AI · Cowork": **Esporta lotto per AI** (gli hotel senza voto con sito → `kidotel-ai-batch.json`, con istruzioni+schema) e **Importa valutazioni AI** (`results.json` → voti nel DB, sorgente "ai-cowork"). Niente chiave API: l'AI gira in Cowork col tuo Claude e legge i siti in qualsiasi lingua. Contratto in `docs/COWORK-AI-SCORING.md`.
 - Comandi Rust `import_ai_scores`, `read_text_file`; permesso `dialog:allow-open`.
+- **Script deterministico `scripts/score-batch.mjs`**: valuta il lotto chiamando il `claude` di Claude Code (auth sottoscrizione, niente API key) — apre i siti con WebFetch, scrive `results.json`, riprendibile. Flag verificati con `claude --help`; logica verificata con stub (chunk/parse/scrittura/ripresa).
 ### Verificato
 - Plumbing nel frontend: export costruisce il lotto coi soli hotel con sito senza voto (id corretti, istruzioni+schema); import chiama `import_ai_scores` e aggiorna l'archivio.
 - Qualità AI dimostrata: Cavallino Bianco a regole 26 → l'AI (sola homepage) 62, con citazioni. Supera il tetto del crawl/lingue.
