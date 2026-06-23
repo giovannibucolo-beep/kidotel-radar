@@ -2,6 +2,10 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.3.4] — 2026-06-24
+### Corretto
+- **"Hotel trovati" mostrava 5000 invece del totale reale** (effetto del cap di caricamento 0.3.3): sembrava che gli hotel fossero spariti. Ora mostra il **totale vero del database** (`count_hotels`) con la nota "mostrati 5000 / N". I dati erano sempre tutti nel DB.
+
 ## [0.3.3] — 2026-06-24
 ### Migliorato
 - **Prestazioni con archivi grandi** (49k+ hotel): `list_hotels` ora carica i più rilevanti (voto più alto) con un limite (default 5000) invece di tutti → app scattante. Didascalia "primi 5000 per voto" quando l'archivio è più grande. (Filtri/scansione per area restano per il resto.)

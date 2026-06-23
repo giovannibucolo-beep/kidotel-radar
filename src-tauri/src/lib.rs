@@ -10,6 +10,7 @@ pub fn run() {
             engine::discover,
             engine::enrich_hotel,
             db::list_hotels,
+            db::count_hotels,
             db::export_backup,
             db::import_backup,
             db::write_text_file,

@@ -90,6 +90,7 @@ export default function App() {
   const [minScore, setMinScore] = useState(0);
   const [viewMode, setViewMode] = useState<"table" | "map">("table");
   const [notice, setNotice] = useState<string | null>(null);
+  const [archiveTotal, setArchiveTotal] = useState<number | null>(null);
 
   // Carica l'archivio salvato (SQLite) all'avvio: i dati raccolti persistono tra le sessioni.
   async function loadArchive() {
@@ -115,7 +116,13 @@ export default function App() {
       }
       setHotels(hs);
       setScores(sc);
-      if (hs.length > 0) setArea(t("archive.label") + (hs.length >= 5000 ? " " + t("archive.capped") : ""));
+      let total = hs.length;
+      try { total = await invoke<number>("count_hotels"); } catch { /* ignora */ }
+      setArchiveTotal(total);
+      if (hs.length > 0) {
+        const capped = total > hs.length ? ` — ${t("view.showing")} ${hs.length.toLocaleString(lang)} / ${total.toLocaleString(lang)}` : "";
+        setArea(t("archive.label") + capped);
+      }
     } catch {
       /* nel browser di anteprima non c'è Tauri: nessun archivio da caricare */
     }
@@ -134,6 +141,7 @@ export default function App() {
       // mostra SOLO gli hotel di quest'area (vengono comunque salvati nell'archivio);
       // i voti già calcolati per questi hotel restano disponibili dalla mappa scores.
       setHotels(res.hotels);
+      setArchiveTotal(null); // vista area: la statistica mostra il conteggio dell'area
       setArea(res.area_label);
     } catch (e) {
       setError(String(e));
@@ -385,7 +393,7 @@ export default function App() {
           <div className="stats">
             <div className="stat">
               <div className="stat-label">{t("stats.found")}</div>
-              <div className="stat-value">{hotels.length.toLocaleString(lang)}</div>
+              <div className="stat-value">{(archiveTotal ?? hotels.length).toLocaleString(lang)}</div>
             </div>
             <div className="stat">
               <div className="stat-label">{t("stats.scored")}</div>

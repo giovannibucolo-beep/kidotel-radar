@@ -157,6 +157,13 @@ pub fn list_hotels(app: AppHandle, limit: Option<i64>) -> Result<Vec<HotelRow>, 
 }
 
 #[tauri::command]
+pub fn count_hotels(app: AppHandle) -> Result<i64, String> {
+    let conn = open_db(&app)?;
+    conn.query_row("SELECT COUNT(*) FROM hotels", [], |r| r.get(0))
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn write_text_file(path: String, content: String) -> Result<(), String> {
     std::fs::write(&path, content).map_err(|e| e.to_string())
 }
