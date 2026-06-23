@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# stato job di scansione mondiale (locale, non versionare)
+scripts/.world-scan-done.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

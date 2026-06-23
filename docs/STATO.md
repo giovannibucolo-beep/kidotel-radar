@@ -28,8 +28,11 @@
 
 - v0.4.0: **connettore MCP live** `mcp-server/` (binario `kidotel-mcp`): Cowork interroga il DB e scrive i voti senza file. Tool: stats/get_unscored/query_hotels/set_score. Protocollo verificato (initialize/tools-list/lettura→scrittura). Collegamento Cowork da confermare insieme (`docs/MCP-COWORK.md`).
 
+- v0.3.2: messaggio "area troppo grande" per i continenti; soglia family ≥60; **scansione mondiale incrementale** `scripts/world-scan.mjs` (a tappe, riprendibile, dedup).
+
 ## Prossimo passo
-- Confermare il collegamento di Cowork al server MCP (`claude mcp add kidotel -s user -- …/kidotel-mcp`).
+- Far girare/rilanciare `node scripts/world-scan.mjs` per incrementare l'archivio mondiale (aggiungere zone in PLACES).
+- Valutazione AI a regime via MCP locale (`kidotel` tools) o script.
 - Refactor Rust in moduli `discovery`/`crawl`/`scoring` con interfaccia `Scorer`.
 - Estrarre componenti frontend (Sidebar, Stats, ResultsTable, ProofPanel, Toolbar).
 - **Build 0.2.0 fatta e installata** in `/Applications/Kidotel Radar.app` (firmata ad-hoc, precedente rimossa, app aperta). DMG: `src-tauri/target/release/bundle/dmg/Kidotel Radar_0.2.0_aarch64.dmg`.

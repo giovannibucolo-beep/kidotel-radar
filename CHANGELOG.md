@@ -3,6 +3,8 @@
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
 ## [0.3.2] — 2026-06-23
+### Aggiunto
+- **Scansione mondiale incrementale** `scripts/world-scan.mjs`: scandaglia a tappe ~58 zone family di tutti i continenti (Nominatim → Overpass → inserimento nel DB con dedup), **riprendibile** (stato in `scripts/.world-scan-done.json`) e **incrementabile** (rilancia / aggiungi zone). Verificato live: DB cresciuto 10.091 → 14.000+ in pochi minuti.
 ### Corretto
 - **Scansione di un intero continente** (es. "africa", "europa"): prima dava un errore Overpass fuorviante (l'area è troppo grande, milioni di hotel → timeout). Ora messaggio chiaro: "Area troppo grande… scegli un paese, una regione o una città".
 - **"Family hotel" soglia ≥70 → ≥60**: a regole i family hotel veri spesso fanno 66 (4 servizi) e restavano sotto 70 → il contatore mostrava pochissimo (3). A ≥60 il numero è realistico (verificato sul DB reale: 3 → **20**). Aggiornati stat, colore mappa (verde ≥60), legenda e stat MCP (`family_hotel_ge60`).
