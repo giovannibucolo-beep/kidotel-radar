@@ -12,6 +12,8 @@ type Hotel = {
   name: string;
   city: string | null;
   country: string | null;
+  region?: string | null;
+  province?: string | null;
   website: string | null;
   phone: string | null;
   source: string;
@@ -27,6 +29,8 @@ type HotelRow = {
   name: string;
   city: string | null;
   country: string | null;
+  region: string | null;
+  province: string | null;
   website: string | null;
   phone: string | null;
   lat: number;
@@ -89,6 +93,7 @@ export default function App() {
   const [sortBy, setSortBy] = useState<"score" | "name">("score");
   const [minScore, setMinScore] = useState(0);
   const [viewMode, setViewMode] = useState<"table" | "map">("table");
+  const [search, setSearch] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [archiveTotal, setArchiveTotal] = useState<number | null>(null);
 
@@ -101,7 +106,8 @@ export default function App() {
       for (const r of rows) {
         hs.push({
           osm_type: r.osm_type, osm_id: r.osm_id, name: r.name,
-          city: r.city, country: r.country, website: r.website, phone: r.phone,
+          city: r.city, country: r.country, region: r.region, province: r.province,
+          website: r.website, phone: r.phone,
           source: r.source || "OpenStreetMap", lat: r.lat, lon: r.lon,
         });
         if (r.family_fit_score !== null && r.score_breakdown) {
@@ -188,6 +194,10 @@ export default function App() {
   let rows = hotels.map((h) => ({ h, score: getScore(h) }));
   if (onlyScored) rows = rows.filter((r) => r.score !== null);
   if (minScore > 0) rows = rows.filter((r) => (r.score ?? -1) >= minScore);
+  if (search.trim()) {
+    const qq = search.trim().toLowerCase();
+    rows = rows.filter(({ h }) => (h.name + " " + locationOf(h)).toLowerCase().includes(qq));
+  }
   rows.sort((a, b) =>
     sortBy === "name"
       ? a.h.name.localeCompare(b.h.name, lang)
@@ -195,7 +205,7 @@ export default function App() {
   );
 
   const points: MapPoint[] = rows.map(({ h, score }) => ({
-    lat: h.lat, lon: h.lon, name: h.name, score, website: h.website,
+    lat: h.lat, lon: h.lon, name: h.name, score, website: h.website, loc: locationOf(h),
   }));
 
   // Statistiche calcolate SULL'AREA CORRENTE (non sull'archivio): cambiano con la scansione.
@@ -207,12 +217,12 @@ export default function App() {
 
   async function exportCsv() {
     const sep = ";";
-    const header = ["Nome", "Family-fit", "Città", "Paese", "Sito", "Telefono", "Lat", "Lon", "Servizi family"];
+    const header = ["Nome", "Family-fit", "Città", "Provincia", "Regione", "Paese", "Sito", "Telefono", "Lat", "Lon", "Servizi family"];
     const lines = [header];
     for (const { h, score } of rows) {
       const sc = scores[hkey(h)];
       const services = sc ? sc.signals.filter((s) => s.present).map((s) => t(("signal." + s.key) as TKey)).join(", ") : "";
-      lines.push([h.name, score ?? "", h.city ?? "", h.country ?? "", h.website ?? "", h.phone ?? "", h.lat, h.lon, services].map(String));
+      lines.push([h.name, score ?? "", h.city ?? "", h.province ?? "", h.region ?? "", h.country ?? "", h.website ?? "", h.phone ?? "", h.lat, h.lon, services].map(String));
     }
     const csv = "﻿" + lines.map((r) => r.map(csvCell).join(sep)).join("\r\n");
     const safe = (area || "hotels").replace(/[^a-z0-9]+/gi, "-").slice(0, 40);
@@ -412,6 +422,7 @@ export default function App() {
 
           {hotels.length > 0 && (
             <div className="toolbar">
+              <input className="tb-search" type="text" value={search} onChange={(e) => setSearch(e.currentTarget.value)} placeholder={t("view.search")} />
               <label className="tb-item">
                 <input type="checkbox" checked={onlyScored} onChange={(e) => setOnlyScored(e.currentTarget.checked)} />
                 {t("view.onlyscored")}
@@ -475,9 +486,7 @@ export default function App() {
                       <div className="trow">
                         <span className="cell-name">
                           {h.name}
-                          <span className="cell-loc">
-                            {[h.city, h.country].filter(Boolean).join(", ") || "—"}
-                          </span>
+                          <span className="cell-loc">{locationOf(h)}</span>
                         </span>
                         <span>
                           {score !== null ? (
@@ -566,4 +575,19 @@ function prettyHost(url: string): string {
   } catch {
     return url;
   }
+}
+
+function cleanAdmin(s: string): string {
+  return s.replace(/^(Provincia di |Provincia Autonoma di |Politischer Bezirk |Province of |Préfecture de |Regione |Comunità )/i, "").trim();
+}
+
+export function locationOf(h: { city: string | null; province?: string | null; region?: string | null; country: string | null }): string {
+  const parts = [h.city, h.province, h.region, h.country].map((x) => (x ? cleanAdmin(x) : "")).filter(Boolean);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const p of parts) {
+    const k = p.toLowerCase();
+    if (!seen.has(k)) { seen.add(k); out.push(p); }
+  }
+  return out.join(" · ") || "—";
 }

@@ -107,6 +107,8 @@ pub struct HotelRow {
     pub name: String,
     pub city: Option<String>,
     pub country: Option<String>,
+    pub region: Option<String>,
+    pub province: Option<String>,
     pub website: Option<String>,
     pub phone: Option<String>,
     pub lat: f64,
@@ -124,7 +126,7 @@ pub fn list_hotels(app: AppHandle, limit: Option<i64>) -> Result<Vec<HotelRow>, 
     let lim = limit.unwrap_or(5000).clamp(1, 200000);
     let sql = format!(
         "SELECT osm_type, osm_id, name, city, country, website, phone, lat, lon, source,
-                family_fit_score, score_breakdown, enrichment
+                family_fit_score, score_breakdown, enrichment, region, province
          FROM hotels
          ORDER BY (family_fit_score IS NULL), family_fit_score DESC, name COLLATE NOCASE
          LIMIT {lim}"
@@ -146,6 +148,8 @@ pub fn list_hotels(app: AppHandle, limit: Option<i64>) -> Result<Vec<HotelRow>, 
                 family_fit_score: r.get(10)?,
                 score_breakdown: r.get(11)?,
                 enrichment: r.get(12)?,
+                region: r.get(13)?,
+                province: r.get(14)?,
             })
         })
         .map_err(|e| e.to_string())?;

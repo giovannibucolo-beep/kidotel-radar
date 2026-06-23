@@ -8,6 +8,7 @@ export type MapPoint = {
   name: string;
   score: number | null;
   website: string | null;
+  loc?: string;
 };
 
 function colorFor(score: number | null): string {
@@ -58,6 +59,7 @@ export default function MapView({ points }: { points: MapPoint[] }) {
       const popup =
         `<strong>${esc(p.name)}</strong>` +
         (p.score !== null ? ` — <b>${p.score}</b>` : "") +
+        (p.loc ? `<br><span style="color:#666">${esc(p.loc)}</span>` : "") +
         (host ? `<br><span style="color:#0f6e56">${esc(host)}</span>` : "");
       L.circleMarker([p.lat, p.lon], {
         renderer: canvas,

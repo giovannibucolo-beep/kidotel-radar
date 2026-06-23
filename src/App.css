@@ -169,6 +169,7 @@ body { margin: 0; background: var(--bg); }
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 8px 12px;
 }
+.tb-search { height: 30px; min-width: 200px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-size: 13px; padding: 0 10px; }
 .tb-item { display: flex; align-items: center; gap: 6px; }
 .tb-item select, .tb-item input[type="number"] {
   height: 30px; border: 1px solid var(--border); border-radius: var(--radius-sm);

@@ -2,6 +2,14 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.3.5] — 2026-06-24
+### Aggiunto
+- **Località completa per ogni hotel**: città · provincia · regione · paese, in tabella, mappa (popup) e CSV. Riempita OFFLINE dalla posizione con `scripts/backfill-geo.py` (reverse_geocoder + pycountry, nessuna chiamata online). Verificato: La Grotta → Vigo di Fassa · Trento · Trentino-Alto Adige · Italia.
+- **Ricerca testuale** nella barra: filtra per nome o luogo (città/provincia/regione/paese).
+- `list_hotels` restituisce anche `region`/`province` (colonne aggiunte al DB).
+### Nota
+- Le nuove scansioni hanno la località dopo `python3 scripts/backfill-geo.py --new`.
+
 ## [0.3.4] — 2026-06-24
 ### Corretto
 - **"Hotel trovati" mostrava 5000 invece del totale reale** (effetto del cap di caricamento 0.3.3): sembrava che gli hotel fossero spariti. Ora mostra il **totale vero del database** (`count_hotels`) con la nota "mostrati 5000 / N". I dati erano sempre tutti nel DB.
