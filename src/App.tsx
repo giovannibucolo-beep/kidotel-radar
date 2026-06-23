@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { useI18n, type Lang, type TKey } from "./i18n";
@@ -20,6 +20,22 @@ type Hotel = {
 
 type DiscoverResult = { area_label: string; count: number; hotels: Hotel[] };
 
+type HotelRow = {
+  osm_type: string;
+  osm_id: number;
+  name: string;
+  city: string | null;
+  country: string | null;
+  website: string | null;
+  phone: string | null;
+  lat: number;
+  lon: number;
+  source: string | null;
+  family_fit_score: number | null;
+  score_breakdown: string | null;
+  enrichment: string | null;
+};
+
 type SignalResult = {
   key: string;
   weight: number;
@@ -37,6 +53,7 @@ type EnrichResult = {
 
 const EXAMPLES = ["Alto Adige", "Toscana", "Costa Brava", "Tokyo"];
 const POOL = 5;
+const RENDER_CAP = 500;
 
 function BrandIcon({ size = 22 }: { size?: number }) {
   return (
@@ -65,26 +82,55 @@ export default function App() {
   const [scores, setScores] = useState<Record<string, EnrichResult>>({});
   const [enriching, setEnriching] = useState(false);
   const [scoredCount, setScoredCount] = useState(0);
+  const [enrichTotal, setEnrichTotal] = useState(0);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [onlyScored, setOnlyScored] = useState(false);
   const [sortBy, setSortBy] = useState<"score" | "name">("score");
   const [minScore, setMinScore] = useState(0);
+
+  // Carica l'archivio salvato (SQLite) all'avvio: i dati raccolti persistono tra le sessioni.
+  async function loadArchive() {
+    try {
+      const rows = await invoke<HotelRow[]>("list_hotels");
+      const hs: Hotel[] = [];
+      const sc: Record<string, EnrichResult> = {};
+      for (const r of rows) {
+        hs.push({
+          osm_type: r.osm_type, osm_id: r.osm_id, name: r.name,
+          city: r.city, country: r.country, website: r.website, phone: r.phone,
+          source: r.source || "OpenStreetMap", lat: r.lat, lon: r.lon,
+        });
+        if (r.family_fit_score !== null && r.score_breakdown) {
+          let signals: SignalResult[] = [];
+          try { signals = JSON.parse(r.score_breakdown); } catch { /* ignore */ }
+          let website_ok = true;
+          try { if (r.enrichment) website_ok = JSON.parse(r.enrichment).website_ok ?? true; } catch { /* ignore */ }
+          sc[`${r.osm_type}/${r.osm_id}`] = {
+            website_ok, pages_fetched: 0, family_fit_score: r.family_fit_score, signals,
+          };
+        }
+      }
+      setHotels(hs);
+      setScores(sc);
+    } catch {
+      /* nel browser di anteprima non c'è Tauri: nessun archivio da caricare */
+    }
+  }
+
+  useEffect(() => { loadArchive(); }, []);
 
   async function scan() {
     const q = query.trim();
     if (!q || loading) return;
     setLoading(true);
     setError(null);
-    setScores({});
     setExpanded(null);
     try {
       const res = await invoke<DiscoverResult>("discover", { query: q });
-      setHotels(res.hotels);
       setArea(res.area_label);
+      await loadArchive(); // i nuovi hotel sono salvati: ricarico l'archivio completo
     } catch (e) {
       setError(String(e));
-      setHotels([]);
-      setArea(null);
     } finally {
       setLoading(false);
     }
@@ -92,10 +138,12 @@ export default function App() {
 
   async function enrichAll() {
     if (enriching) return;
-    const targets = hotels.filter((h) => h.website);
+    // ripartibile: valuta solo gli hotel con sito e non ancora valutati
+    const targets = hotels.filter((h) => h.website && !scores[hkey(h)]);
     if (targets.length === 0) return;
     setEnriching(true);
     setScoredCount(0);
+    setEnrichTotal(targets.length);
     let done = 0;
     let idx = 0;
     const worker = async () => {
@@ -133,6 +181,7 @@ export default function App() {
   );
 
   const withSite = hotels.filter((h) => h.website).length;
+  const unscored = hotels.filter((h) => h.website && !scores[hkey(h)]).length;
   const scoredVals = Object.values(scores).filter((s) => s.website_ok);
   const avgScore =
     scoredVals.length > 0
@@ -207,8 +256,8 @@ export default function App() {
             {loading ? t("scan.scanning") : t("scan.button")}
           </button>
           {hotels.length > 0 && (
-            <button className="enrich-btn" onClick={enrichAll} disabled={enriching || withSite === 0}>
-              {enriching ? `${t("enrich.running")} ${scoredCount}/${withSite}` : t("enrich.button")}
+            <button className="enrich-btn" onClick={enrichAll} disabled={enriching || unscored === 0}>
+              {enriching ? `${t("enrich.running")} ${scoredCount}/${enrichTotal}` : t("enrich.button")}
             </button>
           )}
         </aside>
@@ -275,7 +324,8 @@ export default function App() {
                   <span>{t("results.website")}</span>
                   <span className="no-print">{t("results.proof")}</span>
                 </div>
-                {rows.map(({ h, score }) => {
+                {rows.length === 0 && <div className="trow-empty">{t("view.nomatch")}</div>}
+                {rows.slice(0, RENDER_CAP).map(({ h, score }) => {
                   const k = hkey(h);
                   const sc = scores[k];
                   const isOpen = expanded === k;
@@ -318,6 +368,11 @@ export default function App() {
                   );
                 })}
               </div>
+              {rows.length > RENDER_CAP && (
+                <div className="trunc-note">
+                  {t("view.truncated")} {RENDER_CAP} {t("view.of")} {rows.length.toLocaleString(lang)}
+                </div>
+              )}
             </>
           )}
 

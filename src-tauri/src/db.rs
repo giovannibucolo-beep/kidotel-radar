@@ -3,6 +3,7 @@
 
 use crate::engine::Hotel;
 use rusqlite::{params, Connection};
+use serde::Serialize;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
@@ -96,6 +97,60 @@ pub fn export_backup(app: AppHandle, path: String) -> Result<(), String> {
     }
     std::fs::copy(&src, &path).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[derive(Serialize)]
+pub struct HotelRow {
+    pub osm_type: String,
+    pub osm_id: i64,
+    pub name: String,
+    pub city: Option<String>,
+    pub country: Option<String>,
+    pub website: Option<String>,
+    pub phone: Option<String>,
+    pub lat: f64,
+    pub lon: f64,
+    pub source: Option<String>,
+    pub family_fit_score: Option<i64>,
+    pub score_breakdown: Option<String>,
+    pub enrichment: Option<String>,
+}
+
+#[tauri::command]
+pub fn list_hotels(app: AppHandle) -> Result<Vec<HotelRow>, String> {
+    let conn = open_db(&app)?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT osm_type, osm_id, name, city, country, website, phone, lat, lon, source,
+                family_fit_score, score_breakdown, enrichment
+             FROM hotels
+             ORDER BY (family_fit_score IS NULL), family_fit_score DESC, name COLLATE NOCASE",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok(HotelRow {
+                osm_type: r.get(0)?,
+                osm_id: r.get(1)?,
+                name: r.get(2)?,
+                city: r.get(3)?,
+                country: r.get(4)?,
+                website: r.get(5)?,
+                phone: r.get(6)?,
+                lat: r.get(7)?,
+                lon: r.get(8)?,
+                source: r.get(9)?,
+                family_fit_score: r.get(10)?,
+                score_breakdown: r.get(11)?,
+                enrichment: r.get(12)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
 }
 
 #[tauri::command]

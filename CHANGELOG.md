@@ -2,6 +2,14 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.2.2] — 2026-06-23
+### Aggiunto
+- **Persistenza visibile**: all'avvio l'app carica l'archivio salvato (comando `list_hotels`) — gli hotel raccolti e i voti restano tra le sessioni; una nuova scansione si somma all'archivio.
+- **Valutazione ripartibile**: "Valuta family-fit" salta gli hotel già valutati (salvataggio incrementale: puoi fermarti e riprendere).
+- Messaggio chiaro quando i filtri non mostrano nulla (es. "Solo con voto" senza voti ancora calcolati); limite di 500 righe a video (export/stampa restano completi) con nota di troncamento.
+### Corretto
+- Con "Solo con voto" attivo e nessun voto, la tabella ora spiega cosa fare invece di restare vuota.
+
 ## [0.2.1] — 2026-06-23
 ### Aggiunto
 - Vista risultati con barra strumenti: filtro **Solo con voto**, **ordinamento** (Family-fit ↓ / Nome), **voto minimo**, conteggio "Mostrati".

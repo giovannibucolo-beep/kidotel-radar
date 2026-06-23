@@ -9,6 +9,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             engine::discover,
             engine::enrich_hotel,
+            db::list_hotels,
             db::export_backup,
             db::import_backup,
             db::write_text_file,

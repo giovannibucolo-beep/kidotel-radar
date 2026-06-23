@@ -196,6 +196,9 @@ body { margin: 0; background: var(--bg); }
   border: 1px dashed var(--border); border-radius: var(--radius);
 }
 
+.trow-empty { padding: 18px 14px; color: var(--text-2); font-size: 13px; }
+.trunc-note { font-size: 12px; color: var(--text-3); margin-top: 8px; }
+
 .table {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   overflow: hidden;
