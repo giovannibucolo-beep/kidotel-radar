@@ -2,6 +2,14 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.4.0] — 2026-06-23 (connettore MCP live)
+### Aggiunto
+- **Server MCP `kidotel-mcp`** (`mcp-server/`, binario separato): Cowork/Claude interroga il database e **scrive i voti direttamente**, senza file a mano. Strumenti: `kidotel_stats`, `kidotel_get_unscored`, `kidotel_query_hotels`, `kidotel_set_score`. Guida: `docs/MCP-COWORK.md`.
+### Verificato
+- Protocollo stdio JSON-RPC: `initialize`, `tools/list`, giro lettura→scrittura (`get_unscored`→`set_score`→`query_hotels`/`stats`) su DB di prova. Da confermare insieme: collegamento effettivo di Cowork.
+### Nota
+- App desktop invariata (0.3.1); il connettore è un binario a sé (`kidotel-mcp` 0.1.0).
+
 ## [0.3.1] — 2026-06-23
 ### Aggiunto
 - **Backup del database** (requisito): sidebar "Dati" → **Esporta backup** / **Importa backup** (file `.sqlite` completo, re-importabile). Verificato nel frontend.

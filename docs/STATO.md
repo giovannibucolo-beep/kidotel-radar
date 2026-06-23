@@ -26,9 +26,11 @@
 
 - v0.3.0: **AiScorer via Cowork** (ponte a lotti export/import) — `docs/COWORK-AI-SCORING.md`; comandi `import_ai_scores`/`read_text_file`; dimostrato che l'AI supera le regole (Cavallino 26→62 con citazioni).
 
+- v0.4.0: **connettore MCP live** `mcp-server/` (binario `kidotel-mcp`): Cowork interroga il DB e scrive i voti senza file. Tool: stats/get_unscored/query_hotels/set_score. Protocollo verificato (initialize/tools-list/lettura→scrittura). Collegamento Cowork da confermare insieme (`docs/MCP-COWORK.md`).
+
 ## Prossimo passo
-- **v0.4 — connettore MCP live**: server MCP nell'app, Cowork interroga il DB e scrive i voti senza file a mano (non verificabile headless da me → da collaudare insieme).
-- Refactor Rust in moduli `discovery`/`crawl`/`scoring` con interfaccia `Scorer` (oggi: RuleScorer + AiScorer-via-import).
+- Confermare il collegamento di Cowork al server MCP (`claude mcp add kidotel -s user -- …/kidotel-mcp`).
+- Refactor Rust in moduli `discovery`/`crawl`/`scoring` con interfaccia `Scorer`.
 - Estrarre componenti frontend (Sidebar, Stats, ResultsTable, ProofPanel, Toolbar).
 - **Build 0.2.0 fatta e installata** in `/Applications/Kidotel Radar.app` (firmata ad-hoc, precedente rimossa, app aperta). DMG: `src-tauri/target/release/bundle/dmg/Kidotel Radar_0.2.0_aarch64.dmg`.
 - Script release riutilizzabile: `pnpm release` (o `node scripts/release.mjs [versione]`) — build → firma → installa nuova → cancella vecchia → apri.

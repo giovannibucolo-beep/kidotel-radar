@@ -1,0 +1,13 @@
+[package]
+name = "kidotel-mcp"
+version = "0.1.0"
+edition = "2021"
+description = "Server MCP locale per Kidotel Radar: espone il database hotel a Cowork/Claude (query + scrittura voti)"
+
+[[bin]]
+name = "kidotel-mcp"
+path = "src/main.rs"
+
+[dependencies]
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde_json = "1"
