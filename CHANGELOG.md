@@ -2,6 +2,10 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.3.8] — 2026-06-24
+### Corretto
+- **La scansione di una regione restituiva anche le zone vicine** (es. "Lazio" includeva Abruzzo/Umbria/Toscana): si interrogava OpenStreetMap per **rettangolo (bounding box)**. Ora si interroga per **confine amministrativo** (poligono, via `area:` da osm_type/osm_id di Nominatim), con fallback al rettangolo solo se l'area non è disponibile. Verificato: Ortisei per confine = 20 hotel (vs 36 del rettangolo).
+
 ## [0.3.7] — 2026-06-24
 ### Aggiunto
 - **Barra di avanzamento della valutazione** (sempre visibile, si aggiorna ogni 4s): "Valutati N / M con sito (X%)". Risponde a "la valutazione sta continuando?".

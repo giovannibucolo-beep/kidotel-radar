@@ -46,6 +46,8 @@ struct Bbox {
     w: f64,
     e: f64,
     label: String,
+    osm_type: String,
+    osm_id: i64,
 }
 
 async fn nominatim_bbox(client: &reqwest::Client, query: &str) -> Result<Bbox, String> {
@@ -79,7 +81,9 @@ async fn nominatim_bbox(client: &reqwest::Client, query: &str) -> Result<Bbox, S
         .and_then(|v| v.as_str())
         .unwrap_or(query)
         .to_string();
-    Ok(Bbox { s, n, w, e, label })
+    let osm_type = first.get("osm_type").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let osm_id = first.get("osm_id").and_then(|v| v.as_i64()).unwrap_or(0);
+    Ok(Bbox { s, n, w, e, label, osm_type, osm_id })
 }
 
 // Più server Overpass in cascata: se uno è sovraccarico/non risponde JSON, prova il successivo.
@@ -125,13 +129,7 @@ async fn overpass_query(client: &reqwest::Client, q: &str) -> Result<Vec<Value>,
     ))
 }
 
-async fn overpass_hotels(client: &reqwest::Client, b: &Bbox) -> Result<Vec<Hotel>, String> {
-    let q = format!(
-        "[out:json][timeout:90];(node[\"tourism\"=\"hotel\"]({s},{w},{n},{e});way[\"tourism\"=\"hotel\"]({s},{w},{n},{e});relation[\"tourism\"=\"hotel\"]({s},{w},{n},{e}););out center tags;",
-        s = b.s, w = b.w, n = b.n, e = b.e
-    );
-    let elements = overpass_query(client, &q).await?;
-
+fn parse_elements(elements: Vec<Value>) -> Vec<Hotel> {
     let mut hotels = Vec::new();
     for el in elements {
         let tags = el.get("tags");
@@ -140,16 +138,14 @@ async fn overpass_hotels(client: &reqwest::Client, b: &Bbox) -> Result<Vec<Hotel
             _ => continue, // niente nome -> scartato (niente dati inventati)
         };
         let get = |k: &str| {
-            tags.and_then(|t| t.get(k))
-                .and_then(|x| x.as_str())
-                .map(|s| s.to_string())
+            tags.and_then(|t| t.get(k)).and_then(|x| x.as_str()).map(|s| s.to_string())
         };
         let website = get("website").or_else(|| get("contact:website")).or_else(|| get("url"));
         let phone = get("phone").or_else(|| get("contact:phone"));
         let city = get("addr:city");
         let country = get("addr:country");
-        let osm_type = el.get("type").and_then(|x| x.as_str()).unwrap_or("node").to_string();
-        let osm_id = el.get("id").and_then(|x| x.as_i64()).unwrap_or(0);
+        let otype = el.get("type").and_then(|x| x.as_str()).unwrap_or("node").to_string();
+        let oid = el.get("id").and_then(|x| x.as_i64()).unwrap_or(0);
         let (lat, lon) = if let (Some(la), Some(lo)) = (
             el.get("lat").and_then(|x| x.as_f64()),
             el.get("lon").and_then(|x| x.as_f64()),
@@ -164,8 +160,8 @@ async fn overpass_hotels(client: &reqwest::Client, b: &Bbox) -> Result<Vec<Hotel
             (0.0, 0.0)
         };
         hotels.push(Hotel {
-            osm_type,
-            osm_id,
+            osm_type: otype,
+            osm_id: oid,
             name,
             city,
             country,
@@ -177,7 +173,34 @@ async fn overpass_hotels(client: &reqwest::Client, b: &Bbox) -> Result<Vec<Hotel
         });
     }
     hotels.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
-    Ok(hotels)
+    hotels
+}
+
+async fn overpass_hotels(client: &reqwest::Client, b: &Bbox) -> Result<Vec<Hotel>, String> {
+    // 1) prova per CONFINE amministrativo (poligono): non sconfina nelle regioni vicine.
+    let area_id = match b.osm_type.as_str() {
+        "relation" => Some(3_600_000_000_i64 + b.osm_id),
+        "way" => Some(2_400_000_000_i64 + b.osm_id),
+        _ => None,
+    };
+    if let Some(aid) = area_id {
+        let q = format!(
+            "[out:json][timeout:120];(node[\"tourism\"=\"hotel\"](area:{aid});way[\"tourism\"=\"hotel\"](area:{aid}););out center tags;"
+        );
+        if let Ok(elements) = overpass_query(client, &q).await {
+            let hotels = parse_elements(elements);
+            if !hotels.is_empty() {
+                return Ok(hotels);
+            }
+        }
+    }
+    // 2) fallback: bounding box (luogo puntuale o area non disponibile su Overpass).
+    let q = format!(
+        "[out:json][timeout:90];(node[\"tourism\"=\"hotel\"]({s},{w},{n},{e});way[\"tourism\"=\"hotel\"]({s},{w},{n},{e}););out center tags;",
+        s = b.s, w = b.w, n = b.n, e = b.e
+    );
+    let elements = overpass_query(client, &q).await?;
+    Ok(parse_elements(elements))
 }
 
 #[tauri::command]
