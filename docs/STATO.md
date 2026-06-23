@@ -2,7 +2,7 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.1.0` (in sviluppo)
+- **Versione:** `0.2.0` (installata su macOS)
 - **Aggiornato:** 2026-06-23
 
 ## Fatto
@@ -16,7 +16,8 @@
 ## Fatto v0.2 (2026-06-23) — family-fit, gratis e con prova
 - Motore Rust `enrich_hotel`: crawl sito (robots-aware) + riconoscitore family **multilingue a regole** + **verifica verbatim** + punteggio 0–100 + breakdown in SQLite. Nessuna API.
 - UI: colonna Family-fit (badge), pulsante "Valuta family-fit" a lotti con avanzamento, pannello "Prova", statistica family-fit medio.
-- Versione mostrata resta **0.1.0** fino al primo installer 0.2.0 (regola: versione legata alla build installata).
+- **Build 0.2.0 fatta e installata** in `/Applications/Kidotel Radar.app` (firmata ad-hoc, precedente rimossa, app aperta). DMG: `src-tauri/target/release/bundle/dmg/Kidotel Radar_0.2.0_aarch64.dmg`.
+- Script release riutilizzabile: `pnpm release` (o `node scripts/release.mjs [versione]`) — build → firma → installa nuova → cancella vecchia → apri.
 
 ## Verificato (2026-06-23)
 - `cargo test` **3/3 verdi** (rimozione script/style; rilevamento con prova verificata = 66; nessun-segnale = 0).
