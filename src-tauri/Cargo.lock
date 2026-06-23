@@ -1908,7 +1908,7 @@ dependencies = [
 
 [[package]]
 name = "kidotel-radar"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "reqwest 0.12.28",
  "rusqlite",

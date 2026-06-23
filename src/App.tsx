@@ -207,6 +207,37 @@ export default function App() {
     }
   }
 
+  function buildReportHtml(): string {
+    const esc = (s: unknown) =>
+      String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] as string));
+    const date = new Date().toLocaleDateString(lang);
+    const body = rows
+      .map(({ h, score }) => {
+        const sc = scores[hkey(h)];
+        const services = sc ? sc.signals.filter((s) => s.present).map((s) => t(("signal." + s.key) as TKey)).join(", ") : "";
+        return `<tr><td>${esc(h.name)}</td><td class="s">${score ?? "—"}</td><td>${esc([h.city, h.country].filter(Boolean).join(", "))}</td><td>${esc(h.website ? prettyHost(h.website) : "")}</td><td>${esc(services)}</td></tr>`;
+      })
+      .join("");
+    return (
+      `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><title>Kidotel Radar</title>` +
+      `<style>body{font-family:-apple-system,Segoe UI,Arial,sans-serif;margin:24px;color:#1a1a18}` +
+      `h1{font-size:18px;margin:0 0 4px}.sub{color:#666;font-size:13px;margin-bottom:16px}` +
+      `table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #ddd}` +
+      `th{color:#666;font-weight:600}.s{font-weight:700}</style></head><body>` +
+      `<h1>Kidotel Radar</h1><div class="sub">${esc(area || "")} · ${date} · ${rows.length} hotel</div>` +
+      `<table><thead><tr><th>${t("results.hotel")}</th><th>${t("results.score")}</th><th>${t("results.location")}</th><th>${t("results.website")}</th><th>${t("results.proof")}</th></tr></thead><tbody>${body}</tbody></table>` +
+      `</body></html>`
+    );
+  }
+
+  async function printReport() {
+    try {
+      await invoke("open_report", { html: buildReportHtml() });
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
   const printDate = new Date().toLocaleDateString(lang);
 
   return (
@@ -305,7 +336,7 @@ export default function App() {
               </label>
               <span className="tb-count">{t("view.showing")}: {rows.length.toLocaleString(lang)}</span>
               <span className="tb-spacer" />
-              <button className="tb-btn" onClick={() => window.print()}>{t("action.print")}</button>
+              <button className="tb-btn" onClick={printReport}>{t("action.print")}</button>
               <button className="tb-btn" onClick={exportCsv}>{t("action.export")}</button>
             </div>
           )}

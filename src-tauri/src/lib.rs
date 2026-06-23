@@ -13,6 +13,7 @@ pub fn run() {
             db::export_backup,
             db::import_backup,
             db::write_text_file,
+            db::open_report,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

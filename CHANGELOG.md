@@ -2,6 +2,10 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.2.3] — 2026-06-23
+### Corretto
+- **Stampa ora funziona davvero.** Prima usava `window.print()`, che nel webview Tauri (WebKit) è un no-op: il pulsante non faceva nulla. Ora genera un report HTML e lo apre nel browser di sistema (comando `open_report` via plugin opener), dove Stampa e "Salva in PDF" funzionano. Il report contiene tutte le righe filtrate (non solo le 500 a video).
+
 ## [0.2.2] — 2026-06-23
 ### Aggiunto
 - **Persistenza visibile**: all'avvio l'app carica l'archivio salvato (comando `list_hotels`) — gli hotel raccolti e i voti restano tra le sessioni; una nuova scansione si somma all'archivio.

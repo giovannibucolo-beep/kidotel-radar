@@ -6,6 +6,7 @@ use rusqlite::{params, Connection};
 use serde::Serialize;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
+use tauri_plugin_opener::OpenerExt;
 
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS hotels (
@@ -156,6 +157,18 @@ pub fn list_hotels(app: AppHandle) -> Result<Vec<HotelRow>, String> {
 #[tauri::command]
 pub fn write_text_file(path: String, content: String) -> Result<(), String> {
     std::fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+// Stampa affidabile in Tauri: scrive un report HTML e lo apre nel browser di sistema,
+// dove Stampa e "Salva in PDF" funzionano davvero (window.print() nel webview è un no-op).
+#[tauri::command]
+pub fn open_report(app: AppHandle, html: String) -> Result<(), String> {
+    let path = std::env::temp_dir().join("kidotel-radar-report.html");
+    std::fs::write(&path, html).map_err(|e| e.to_string())?;
+    app.opener()
+        .open_path(path.to_string_lossy().to_string(), None::<&str>)
+        .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
