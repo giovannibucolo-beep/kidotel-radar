@@ -107,6 +107,12 @@ body { margin: 0; background: var(--bg); }
 .enrich-btn:hover { background: var(--surface-2); }
 .enrich-btn:disabled { opacity: 0.5; cursor: default; }
 
+.link-btn {
+  background: none; border: none; color: var(--text-2); font-size: 13px;
+  cursor: pointer; padding: 2px 0; text-align: left; text-decoration: underline;
+}
+.link-btn:hover { color: var(--brand-strong); }
+
 .score {
   display: inline-block; min-width: 30px; text-align: center;
   font-weight: 500; font-size: 13px; border-radius: 999px; padding: 3px 9px;

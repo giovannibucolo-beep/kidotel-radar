@@ -82,23 +82,55 @@ async fn nominatim_bbox(client: &reqwest::Client, query: &str) -> Result<Bbox, S
     Ok(Bbox { s, n, w, e, label })
 }
 
+// Più server Overpass in cascata: se uno è sovraccarico/non risponde JSON, prova il successivo.
+const OVERPASS_ENDPOINTS: &[&str] = &[
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+];
+
+async fn overpass_query(client: &reqwest::Client, q: &str) -> Result<Vec<Value>, String> {
+    let mut last = String::from("nessun endpoint disponibile");
+    for ep in OVERPASS_ENDPOINTS {
+        match client.post(*ep).form(&[("data", q)]).send().await {
+            Ok(resp) => {
+                let ok = resp.status().is_success();
+                let text = resp.text().await.unwrap_or_default();
+                if !ok {
+                    last = format!("{ep} ha risposto con un errore (forse sovraccarico)");
+                    continue;
+                }
+                match serde_json::from_str::<Value>(&text) {
+                    Ok(v) => {
+                        return Ok(v
+                            .get("elements")
+                            .and_then(|e| e.as_array())
+                            .cloned()
+                            .unwrap_or_default());
+                    }
+                    Err(_) => {
+                        last = format!("{ep} ha restituito una risposta non valida (probabile sovraccarico)");
+                        continue;
+                    }
+                }
+            }
+            Err(e) => {
+                last = e.to_string();
+                continue;
+            }
+        }
+    }
+    Err(format!(
+        "Server OpenStreetMap (Overpass) momentaneamente non disponibile — riprova tra qualche secondo. Dettaglio: {last}"
+    ))
+}
+
 async fn overpass_hotels(client: &reqwest::Client, b: &Bbox) -> Result<Vec<Hotel>, String> {
     let q = format!(
         "[out:json][timeout:90];(node[\"tourism\"=\"hotel\"]({s},{w},{n},{e});way[\"tourism\"=\"hotel\"]({s},{w},{n},{e});relation[\"tourism\"=\"hotel\"]({s},{w},{n},{e}););out center tags;",
         s = b.s, w = b.w, n = b.n, e = b.e
     );
-    let resp = client
-        .post("https://overpass-api.de/api/interpreter")
-        .form(&[("data", q.as_str())])
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    let v: Value = resp.json().await.map_err(|e| e.to_string())?;
-    let elements = v
-        .get("elements")
-        .and_then(|e| e.as_array())
-        .cloned()
-        .unwrap_or_default();
+    let elements = overpass_query(client, &q).await?;
 
     let mut hotels = Vec::new();
     for el in elements {
@@ -612,5 +644,37 @@ mod tests {
         });
         println!("LIVE: {} hotel trovati a Ortisei", n);
         assert!(n > 0);
+    }
+
+    // Prova LIVE mondiale: `cargo test -- --ignored live_discover_world --nocapture`
+    #[test]
+    #[ignore]
+    fn live_discover_world() {
+        let places = [
+            "Queenstown, New Zealand",
+            "Cancun, Mexico",
+            "Zanzibar, Tanzania",
+            "Reykjavik, Iceland",
+            "Bariloche, Argentina",
+            "Phuket, Thailand",
+        ];
+        tauri::async_runtime::block_on(async {
+            let c = http_client().unwrap();
+            for p in places {
+                match nominatim_bbox(&c, p).await {
+                    Ok(b) => match overpass_hotels(&c, &b).await {
+                        Ok(h) => println!(
+                            "{:<26} -> {:>4} hotel | es: {}",
+                            p,
+                            h.len(),
+                            h.first().map(|x| x.name.as_str()).unwrap_or("-")
+                        ),
+                        Err(e) => println!("{:<26} -> overpass err: {}", p, e),
+                    },
+                    Err(e) => println!("{:<26} -> nominatim err: {}", p, e),
+                }
+                std::thread::sleep(std::time::Duration::from_millis(1300));
+            }
+        });
     }
 }

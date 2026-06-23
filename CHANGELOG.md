@@ -2,6 +2,15 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.2.4] — 2026-06-23
+### Corretto
+- **La scansione mostra solo l'area cercata** (prima, dopo lo scan, mostrava l'intero archivio: cercando "Calabria"/"Trapani" si vedevano gli hotel dell'Alto Adige già valutati in cima). Verificato: scan di Calabria → solo hotel calabresi; gli hotel di altre aree spariscono.
+- **Discovery robusta in tutto il mondo**: Overpass ora prova 3 server in cascata e gestisce risposte non-JSON/sovraccarico (prima Reykjavík e Bariloche davano "error decoding response body"; ora 6/6 destinazioni mondiali restituiscono hotel).
+### Aggiunto
+- Pulsante **"Mostra archivio salvato"**: per vedere tutti gli hotel raccolti (tutte le aree) accumulati nel database. All'avvio l'app mostra l'archivio salvato con etichetta dedicata.
+### Verificato (live, dati reali)
+- Scoperta mondiale: Queenstown 52, Cancún 157, Zanzibar 373, Reykjavík 81, Bariloche 137, Phuket 917.
+
 ## [0.2.3] — 2026-06-23
 ### Corretto
 - **Stampa ora funziona davvero.** Prima usava `window.print()`, che nel webview Tauri (WebKit) è un no-op: il pulsante non faceva nulla. Ora genera un report HTML e lo apre nel browser di sistema (comando `open_report` via plugin opener), dove Stampa e "Salva in PDF" funzionano. Il report contiene tutte le righe filtrate (non solo le 500 a video).

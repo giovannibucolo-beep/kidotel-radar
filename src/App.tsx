@@ -112,6 +112,7 @@ export default function App() {
       }
       setHotels(hs);
       setScores(sc);
+      if (hs.length > 0) setArea(t("archive.label"));
     } catch {
       /* nel browser di anteprima non c'è Tauri: nessun archivio da caricare */
     }
@@ -127,8 +128,10 @@ export default function App() {
     setExpanded(null);
     try {
       const res = await invoke<DiscoverResult>("discover", { query: q });
+      // mostra SOLO gli hotel di quest'area (vengono comunque salvati nell'archivio);
+      // i voti già calcolati per questi hotel restano disponibili dalla mappa scores.
+      setHotels(res.hotels);
       setArea(res.area_label);
-      await loadArchive(); // i nuovi hotel sono salvati: ricarico l'archivio completo
     } catch (e) {
       setError(String(e));
     } finally {
@@ -291,6 +294,7 @@ export default function App() {
               {enriching ? `${t("enrich.running")} ${scoredCount}/${enrichTotal}` : t("enrich.button")}
             </button>
           )}
+          <button className="link-btn" onClick={loadArchive}>{t("archive.show")}</button>
         </aside>
 
         <main className="main">

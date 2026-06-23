@@ -2,7 +2,7 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.2.3` (installata su macOS)
+- **Versione:** `0.2.4` (installata su macOS)
 - **Aggiornato:** 2026-06-23
 
 ## Fatto
@@ -18,6 +18,8 @@
 - UI: colonna Family-fit (badge), pulsante "Valuta family-fit" a lotti con avanzamento, pannello "Prova", statistica family-fit medio.
 - v0.2.1: barra **filtro/ordina/voto-min**, **Stampa** (→ anche PDF) ed **Esporta CSV** (finestra salva con nome).
 - v0.2.2: **archivio persistente caricato all'avvio** (`list_hotels`), nuova scansione si somma, **valutazione ripartibile** (salta i già valutati), messaggio anti-vuoto sui filtri, cap 500 righe a video.
+- v0.2.3: **Stampa funzionante** (`open_report`: report HTML aperto nel browser; `window.print()` è no-op in Tauri).
+- v0.2.4: **scansione = solo l'area** (non più l'archivio intero) + pulsante "Mostra archivio salvato"; **Overpass con 3 server in cascata** (mondiale robusto). Scoperta mondiale verificata live (6/6 destinazioni).
 - **Build 0.2.0 fatta e installata** in `/Applications/Kidotel Radar.app` (firmata ad-hoc, precedente rimossa, app aperta). DMG: `src-tauri/target/release/bundle/dmg/Kidotel Radar_0.2.0_aarch64.dmg`.
 - Script release riutilizzabile: `pnpm release` (o `node scripts/release.mjs [versione]`) — build → firma → installa nuova → cancella vecchia → apri.
 
