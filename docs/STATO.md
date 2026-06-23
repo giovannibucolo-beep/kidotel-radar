@@ -2,7 +2,7 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.2.5` (installata su macOS)
+- **Versione:** `0.2.6` (installata su macOS)
 - **Aggiornato:** 2026-06-23
 
 ## Fatto
@@ -21,6 +21,12 @@
 - v0.2.3: **Stampa funzionante** (`open_report`: report HTML aperto nel browser; `window.print()` è no-op in Tauri).
 - v0.2.4: **scansione = solo l'area** (non più l'archivio intero) + pulsante "Mostra archivio salvato"; **Overpass con 3 server in cascata** (mondiale robusto). Scoperta mondiale verificata live (6/6 destinazioni).
 - v0.2.5: statistiche **per-area** utili (Valutati, Family hotel ≥70) al posto della "media sempre 9"; **TLS di sistema (native-tls)** → recuperati i siti che davano 0 pagine. Diagnostica scoring verificata su hotel reali (family 66-86, città 0-14).
+- v0.2.6: **Vista Mappa** (Leaflet/OSM, pin colorati per family-fit) + selettore Tabella↔Mappa; `docs/ARCHITETTURA.md` (struttura solida, valutatore sostituibile); primo componente estratto `MapView`.
+
+## Prossimo passo strutturale (prima di altre feature)
+- Refactor Rust in moduli `discovery`/`crawl`/`scoring` con interfaccia **`Scorer`** (RuleScorer ora, AiScorer v0.3).
+- Estrarre i componenti frontend (Sidebar, Stats, ResultsTable, ProofPanel, Toolbar).
+- Poi v0.3: **AiScorer via Cowork/MCP** = qualità di valutazione mondiale e multilingua (il vero salto).
 - **Build 0.2.0 fatta e installata** in `/Applications/Kidotel Radar.app` (firmata ad-hoc, precedente rimossa, app aperta). DMG: `src-tauri/target/release/bundle/dmg/Kidotel Radar_0.2.0_aarch64.dmg`.
 - Script release riutilizzabile: `pnpm release` (o `node scripts/release.mjs [versione]`) — build → firma → installa nuova → cancella vecchia → apri.
 

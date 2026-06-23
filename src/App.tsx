@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { useI18n, type Lang, type TKey } from "./i18n";
 import { APP_VERSION } from "./version";
+import MapView, { type MapPoint } from "./components/MapView";
 import "./App.css";
 
 type Hotel = {
@@ -87,6 +88,7 @@ export default function App() {
   const [onlyScored, setOnlyScored] = useState(false);
   const [sortBy, setSortBy] = useState<"score" | "name">("score");
   const [minScore, setMinScore] = useState(0);
+  const [viewMode, setViewMode] = useState<"table" | "map">("table");
 
   // Carica l'archivio salvato (SQLite) all'avvio: i dati raccolti persistono tra le sessioni.
   async function loadArchive() {
@@ -182,6 +184,10 @@ export default function App() {
       ? a.h.name.localeCompare(b.h.name, lang)
       : (b.score ?? -1) - (a.score ?? -1) || a.h.name.localeCompare(b.h.name, lang),
   );
+
+  const points: MapPoint[] = rows.map(({ h, score }) => ({
+    lat: h.lat, lon: h.lon, name: h.name, score, website: h.website,
+  }));
 
   // Statistiche calcolate SULL'AREA CORRENTE (non sull'archivio): cambiano con la scansione.
   const withSite = hotels.filter((h) => h.website).length;
@@ -339,6 +345,10 @@ export default function App() {
               </label>
               <span className="tb-count">{t("view.showing")}: {rows.length.toLocaleString(lang)}</span>
               <span className="tb-spacer" />
+              <div className="seg" role="group">
+                <button className={"seg-btn" + (viewMode === "table" ? " active" : "")} onClick={() => setViewMode("table")}>{t("view.table")}</button>
+                <button className={"seg-btn" + (viewMode === "map" ? " active" : "")} onClick={() => setViewMode("map")}>{t("view.map")}</button>
+              </div>
               <button className="tb-btn" onClick={printReport}>{t("action.print")}</button>
               <button className="tb-btn" onClick={exportCsv}>{t("action.export")}</button>
             </div>
@@ -346,6 +356,8 @@ export default function App() {
 
           {hotels.length === 0 && !error ? (
             <div className="placeholder">{loading ? t("scan.scanning") : t("scan.empty")}</div>
+          ) : viewMode === "map" ? (
+            <MapView points={points} />
           ) : (
             <>
               <div className="print-only print-head">

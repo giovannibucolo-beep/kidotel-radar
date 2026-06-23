@@ -2,6 +2,13 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.2.6] — 2026-06-23
+### Aggiunto
+- **Vista Mappa** (Leaflet + OpenStreetMap, nessuna chiave): pin di tutti gli hotel dell'area colorati per family-fit (verde ≥70, ambra 40–69, grigio sotto/non valutato), con popup nome+voto+sito. Selettore **Tabella ↔ Mappa**. Verificato nel frontend (Alto Adige).
+- **Struttura del programma documentata** (`docs/ARCHITETTURA.md`): moduli netti e **valutatore sostituibile** (`Scorer`: regole oggi, AI/Cowork domani). Primo componente estratto: `MapView`.
+### Nota
+- Lo scoring a regole ha un tetto noto (grandi città / siti JS / lingue diverse → sotto-rileva): la qualità mondiale reale è il prossimo passo con l'AI (v0.3). Documentato, non nascosto.
+
 ## [0.2.5] — 2026-06-23
 ### Corretto
 - **"Family-fit medio sempre 9" risolto.** Era una metrica sbagliata e calcolata sull'archivio: sostituita con statistiche utili e **calcolate sull'area corrente** → "Hotel trovati", "Valutati (su con-sito)", "Family hotel (≥70)". Verificato: su 3 hotel (2 col sito) → 3 / 2 / 1.
