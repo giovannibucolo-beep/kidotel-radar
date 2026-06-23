@@ -100,6 +100,47 @@ body { margin: 0; background: var(--bg); }
 .scan-btn:hover { background: var(--brand-strong); }
 .scan-btn:disabled { opacity: 0.5; cursor: default; }
 
+.enrich-btn {
+  height: 38px; border: 1px solid var(--brand); border-radius: var(--radius-sm);
+  background: transparent; color: var(--brand-strong); font-weight: 500; font-size: 14px; cursor: pointer;
+}
+.enrich-btn:hover { background: var(--surface-2); }
+.enrich-btn:disabled { opacity: 0.5; cursor: default; }
+
+.score {
+  display: inline-block; min-width: 30px; text-align: center;
+  font-weight: 500; font-size: 13px; border-radius: 999px; padding: 3px 9px;
+}
+.score-ok { background: #e1f5ee; color: #0f6e56; }
+.score-warn { background: #faeeda; color: #854f0b; }
+.score-low { background: var(--surface-2); color: var(--text-2); }
+
+.proof-toggle {
+  font-size: 12px; padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-2); cursor: pointer;
+}
+.proof-toggle:hover:not(:disabled) { border-color: var(--brand); color: var(--brand-strong); }
+.proof-toggle:disabled { opacity: 0.4; cursor: default; }
+
+.proof { background: var(--surface-2); padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.proof-title { font-size: 12px; color: var(--text-2); margin-bottom: 8px; }
+.proof-empty { font-size: 13px; color: var(--text-3); }
+.proof-item { margin-bottom: 10px; }
+.proof-sig { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 7px; }
+.proof-w { color: var(--text-3); font-weight: 400; font-size: 12px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.dot.ok { background: var(--brand); }
+.proof-quote { font-style: italic; color: var(--text); font-size: 13px; margin: 3px 0 2px 15px; }
+.proof-src { font-size: 12px; color: var(--brand-strong); text-decoration: none; margin-left: 15px; }
+.proof-src:hover { text-decoration: underline; }
+.proof-absent { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.absent-chip { font-size: 11px; color: var(--text-3); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; }
+
+@media (prefers-color-scheme: dark) {
+  .score-ok { background: #0f3a2e; color: #5dcaa5; }
+  .score-warn { background: #3a2c12; color: #efb45a; }
+}
+
 .main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
@@ -107,6 +148,8 @@ body { margin: 0; background: var(--bg); }
 .stat-label { font-size: 12px; color: var(--text-2); }
 .stat-value { font-size: 24px; font-weight: 500; margin-top: 2px; }
 .stat-value.small { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.area-caption { font-size: 12px; color: var(--text-2); margin-top: -6px; }
 
 .error {
   background: #fceaea; color: #a32d2d; border: 1px solid #f0a8a8;
@@ -123,14 +166,15 @@ body { margin: 0; background: var(--bg); }
   overflow: hidden;
 }
 .thead, .trow {
-  display: grid; grid-template-columns: 2fr 1.4fr 1.4fr 0.8fr;
+  display: grid; grid-template-columns: 2fr 0.7fr 1.3fr 0.7fr;
   gap: 12px; align-items: center; padding: 10px 14px;
 }
 .thead { font-size: 12px; color: var(--text-3); border-bottom: 1px solid var(--border); }
 .trow { border-bottom: 1px solid var(--border); font-size: 14px; }
-.trow:last-child { border-bottom: none; }
-.cell-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cell-loc { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.table > div:last-child .trow { border-bottom: none; }
+.cell-name { font-weight: 500; display: flex; flex-direction: column; min-width: 0; }
+.cell-name > span, .cell-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cell-loc { font-weight: 400; font-size: 12px; color: var(--text-2); }
 .cell-site a { color: var(--brand-strong); text-decoration: none; }
 .cell-site a:hover { text-decoration: underline; }
 .cell-src { color: var(--text-3); font-size: 12px; }

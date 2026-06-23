@@ -13,19 +13,21 @@
 - Guscio UI: header (nome + versione + switch lingua), selettore aree, tabella risultati, footer "prova/zero dati inventati".
 - Motore Rust: comando `discover` (Nominatim → bounding box → Overpass `tourism=hotel`) + storage SQLite + comandi backup export/import. *(stato esatto: vedi sotto)*
 
-## Verificato (2026-06-23)
-- `cargo check` **pulito** (tauri + reqwest + rusqlite, exit 0).
-- `pnpm build` **pulito** (tsc + vite).
-- Set icone generato da `icon.svg` (icns macOS, ico Windows, png).
-- UI verificata nel dev server: bilingue **IT/EN** (ogni stringa) + temi **chiaro/scuro** ok.
-- Nota: la scansione reale (`invoke discover`) gira solo nell'app Tauri, non nel browser di anteprima.
+## Fatto v0.2 (2026-06-23) — family-fit, gratis e con prova
+- Motore Rust `enrich_hotel`: crawl sito (robots-aware) + riconoscitore family **multilingue a regole** + **verifica verbatim** + punteggio 0–100 + breakdown in SQLite. Nessuna API.
+- UI: colonna Family-fit (badge), pulsante "Valuta family-fit" a lotti con avanzamento, pannello "Prova", statistica family-fit medio.
+- Versione mostrata resta **0.1.0** fino al primo installer 0.2.0 (regola: versione legata alla build installata).
 
-## Prossimo passo (milestone v0.2 — GRATIS, niente API)
-- Fase **ARRICCHISCI**: crawl del sito ufficiale (robots-aware, cache).
-- Estrazione family **a regole, multilingue** (no Claude API): frasi-chiave per ogni segnale + **citazione verbatim ri-verificata** carattere per carattere (scarta se assente).
-- Calcolo `family_fit_score` + `score_breakdown` salvati e mostrati (badge + riquadro "Prova").
-- (Claude API resta opzionale; l'AI pesante andrà su Cowork via MCP in v0.3.)
-- Direzione completa v0.2→v0.7 in ROADMAP.md ("Revenue & Cowork").
+## Verificato (2026-06-23)
+- `cargo test` **3/3 verdi** (rimozione script/style; rilevamento con prova verificata = 66; nessun-segnale = 0).
+- `cargo test --ignored live_discover_small_area`: **36 hotel reali** trovati a Ortisei via OSM (con siti).
+- `pnpm build` **pulito** (tsc + vite) con la nuova UI di scoring.
+- UI nel dev server: bilingue **IT/EN** + temi **chiaro/scuro** ok.
+- Nota: scansione e valutazione reali girano nell'app Tauri (nel browser di anteprima `invoke` non è disponibile, atteso).
+
+## Prossimo
+- Su richiesta: **build `.dmg` 0.2.0** (installa nuova / cancella vecchia) per collaudo live sull'Alto Adige.
+- Poi v0.3 (server MCP per Cowork). Dettaglio in ROADMAP.md.
 
 ## Note operative
 - DB locale in app-data dir (`co.kidotel.radar`).

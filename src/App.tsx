@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { useI18n, type Lang } from "./i18n";
+import { useI18n, type Lang, type TKey } from "./i18n";
 import { APP_VERSION } from "./version";
 import "./App.css";
 
 type Hotel = {
+  osm_type: string;
+  osm_id: number;
   name: string;
   city: string | null;
   country: string | null;
@@ -14,13 +16,25 @@ type Hotel = {
   lon: number;
 };
 
-type DiscoverResult = {
-  area_label: string;
-  count: number;
-  hotels: Hotel[];
+type DiscoverResult = { area_label: string; count: number; hotels: Hotel[] };
+
+type SignalResult = {
+  key: string;
+  weight: number;
+  present: boolean;
+  quote: string | null;
+  url: string | null;
+};
+
+type EnrichResult = {
+  website_ok: boolean;
+  pages_fetched: number;
+  family_fit_score: number;
+  signals: SignalResult[];
 };
 
 const EXAMPLES = ["Alto Adige", "Toscana", "Costa Brava", "Tokyo"];
+const POOL = 5;
 
 function BrandIcon({ size = 22 }: { size?: number }) {
   return (
@@ -32,6 +46,9 @@ function BrandIcon({ size = 22 }: { size?: number }) {
   );
 }
 
+const hkey = (h: Hotel) => `${h.osm_type}/${h.osm_id}`;
+const tier = (s: number) => (s >= 80 ? "ok" : s >= 60 ? "warn" : "low");
+
 export default function App() {
   const { t, lang, setLang } = useI18n();
   const [query, setQuery] = useState("");
@@ -39,12 +56,18 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [area, setArea] = useState<string | null>(null);
+  const [scores, setScores] = useState<Record<string, EnrichResult>>({});
+  const [enriching, setEnriching] = useState(false);
+  const [scoredCount, setScoredCount] = useState(0);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   async function scan() {
     const q = query.trim();
     if (!q || loading) return;
     setLoading(true);
     setError(null);
+    setScores({});
+    setExpanded(null);
     try {
       const res = await invoke<DiscoverResult>("discover", { query: q });
       setHotels(res.hotels);
@@ -58,7 +81,39 @@ export default function App() {
     }
   }
 
-  const withSite = hotels.filter((h) => h.website && h.website.length > 0).length;
+  async function enrichAll() {
+    if (enriching) return;
+    const targets = hotels.filter((h) => h.website);
+    if (targets.length === 0) return;
+    setEnriching(true);
+    setScoredCount(0);
+    let done = 0;
+    let idx = 0;
+    const worker = async () => {
+      while (idx < targets.length) {
+        const h = targets[idx++];
+        try {
+          const res = await invoke<EnrichResult>("enrich_hotel", {
+            args: { osmType: h.osm_type, osmId: h.osm_id, website: h.website },
+          });
+          setScores((prev) => ({ ...prev, [hkey(h)]: res }));
+        } catch {
+          /* salta il singolo hotel in errore */
+        }
+        done++;
+        setScoredCount(done);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(POOL, targets.length) }, worker));
+    setEnriching(false);
+  }
+
+  const withSite = hotels.filter((h) => h.website).length;
+  const scoredVals = Object.values(scores).filter((s) => s.website_ok);
+  const avgScore =
+    scoredVals.length > 0
+      ? Math.round(scoredVals.reduce((a, s) => a + s.family_fit_score, 0) / scoredVals.length)
+      : null;
 
   return (
     <div className="app">
@@ -106,6 +161,11 @@ export default function App() {
           <button className="scan-btn" onClick={scan} disabled={loading || !query.trim()}>
             {loading ? t("scan.scanning") : t("scan.button")}
           </button>
+          {hotels.length > 0 && (
+            <button className="enrich-btn" onClick={enrichAll} disabled={enriching || withSite === 0}>
+              {enriching ? `${t("enrich.running")} ${scoredCount}/${withSite}` : t("enrich.button")}
+            </button>
+          )}
         </aside>
 
         <main className="main">
@@ -115,14 +175,16 @@ export default function App() {
               <div className="stat-value">{hotels.length.toLocaleString(lang)}</div>
             </div>
             <div className="stat">
-              <div className="stat-label">{t("stats.area")}</div>
-              <div className="stat-value small">{area ?? "—"}</div>
+              <div className="stat-label">{t("stats.avgscore")}</div>
+              <div className="stat-value">{avgScore ?? "—"}</div>
             </div>
             <div className="stat">
               <div className="stat-label">{t("stats.withsite")}</div>
               <div className="stat-value">{withSite.toLocaleString(lang)}</div>
             </div>
           </div>
+
+          {area && <div className="area-caption">{area}</div>}
 
           {error && <div className="error">{t("scan.error")}: {error}</div>}
 
@@ -132,24 +194,54 @@ export default function App() {
             <div className="table">
               <div className="thead">
                 <span>{t("results.hotel")}</span>
-                <span>{t("results.location")}</span>
+                <span>{t("results.score")}</span>
                 <span>{t("results.website")}</span>
-                <span>{t("results.source")}</span>
+                <span>{t("results.proof")}</span>
               </div>
-              {hotels.map((h, i) => (
-                <div className="trow" key={i}>
-                  <span className="cell-name">{h.name}</span>
-                  <span className="cell-loc">{[h.city, h.country].filter(Boolean).join(", ") || "—"}</span>
-                  <span className="cell-site">
-                    {h.website ? (
-                      <a href={h.website} target="_blank" rel="noreferrer">{prettyHost(h.website)}</a>
-                    ) : (
-                      <span className="muted">{t("results.nosite")}</span>
-                    )}
-                  </span>
-                  <span className="cell-src">{h.source}</span>
-                </div>
-              ))}
+              {hotels.map((h) => {
+                const k = hkey(h);
+                const sc = scores[k];
+                const isOpen = expanded === k;
+                return (
+                  <div key={k}>
+                    <div className="trow">
+                      <span className="cell-name">
+                        {h.name}
+                        <span className="cell-loc">
+                          {[h.city, h.country].filter(Boolean).join(", ") || "—"}
+                        </span>
+                      </span>
+                      <span>
+                        {sc && sc.website_ok ? (
+                          <span className={"score score-" + tier(sc.family_fit_score)}>
+                            {sc.family_fit_score}
+                          </span>
+                        ) : (
+                          <span className="muted">{t("results.notscored")}</span>
+                        )}
+                      </span>
+                      <span className="cell-site">
+                        {h.website ? (
+                          <a href={h.website} target="_blank" rel="noreferrer">{prettyHost(h.website)}</a>
+                        ) : (
+                          <span className="muted">{t("results.nosite")}</span>
+                        )}
+                      </span>
+                      <span>
+                        <button
+                          className="proof-toggle"
+                          disabled={!sc}
+                          onClick={() => setExpanded(isOpen ? null : k)}
+                          aria-expanded={isOpen}
+                        >
+                          {t("results.proof")}
+                        </button>
+                      </span>
+                    </div>
+                    {isOpen && sc && <ProofPanel sc={sc} t={t} />}
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -159,6 +251,39 @@ export default function App() {
           </div>
         </main>
       </div>
+    </div>
+  );
+}
+
+function ProofPanel({ sc, t }: { sc: EnrichResult; t: (k: TKey) => string }) {
+  if (!sc.website_ok) return <div className="proof"><div className="proof-empty">{t("proof.nosite")}</div></div>;
+  const present = sc.signals.filter((s) => s.present);
+  const absent = sc.signals.filter((s) => !s.present);
+  return (
+    <div className="proof">
+      <div className="proof-title">{t("proof.title")}</div>
+      {present.length === 0 && <div className="proof-empty">{t("proof.none")}</div>}
+      {present.map((s) => (
+        <div className="proof-item" key={s.key}>
+          <div className="proof-sig">
+            <span className="dot ok" aria-hidden="true" />
+            {t(("signal." + s.key) as TKey)} <span className="proof-w">+{s.weight}</span>
+          </div>
+          {s.quote && <div className="proof-quote">«{s.quote}»</div>}
+          {s.url && (
+            <a className="proof-src" href={s.url} target="_blank" rel="noreferrer">{prettyHost(s.url)}</a>
+          )}
+        </div>
+      ))}
+      {absent.length > 0 && (
+        <div className="proof-absent">
+          {absent.map((s) => (
+            <span className="absent-chip" key={s.key}>
+              {t(("signal." + s.key) as TKey)}: {t("proof.notstated")}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

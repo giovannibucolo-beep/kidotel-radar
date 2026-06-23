@@ -70,6 +70,23 @@ pub fn upsert_hotels(conn: &Connection, hotels: &[Hotel]) -> Result<(), String> 
     Ok(())
 }
 
+pub fn update_enrichment(
+    conn: &Connection,
+    osm_type: &str,
+    osm_id: i64,
+    score: u32,
+    breakdown_json: &str,
+    enrichment_json: &str,
+) -> Result<(), String> {
+    conn.execute(
+        "UPDATE hotels SET family_fit_score = ?3, score_breakdown = ?4, enrichment = ?5,
+            updated_at = datetime('now') WHERE osm_type = ?1 AND osm_id = ?2",
+        params![osm_type, osm_id, score, breakdown_json, enrichment_json],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[tauri::command]
 pub fn export_backup(app: AppHandle, path: String) -> Result<(), String> {
     let src = db_path(&app)?;
