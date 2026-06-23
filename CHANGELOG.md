@@ -2,6 +2,13 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.2.5] — 2026-06-23
+### Corretto
+- **"Family-fit medio sempre 9" risolto.** Era una metrica sbagliata e calcolata sull'archivio: sostituita con statistiche utili e **calcolate sull'area corrente** → "Hotel trovati", "Valutati (su con-sito)", "Family hotel (≥70)". Verificato: su 3 hotel (2 col sito) → 3 / 2 / 1.
+- **Molti siti davano "0 pagine" → voto 0** (es. Greif, Laurin): causa verificata = handshake TLS fallito con rustls su certi server. Passato al **TLS di sistema (native-tls)**, come il browser → quei siti ora scaricano le pagine (verificato: 200 OK).
+### Note oneste (verificate su dati reali)
+- Scoring a regole: family hotel veri segnano bene (Feuerstein 86, Sonnwies/Schwarzenstein 66), hotel di città bassi (Greif 0, Laurin 14) → discrimina correttamente. Limite: alcuni siti ricchi ma JS/strutturati diversamente vengono sottovalutati (es. Cavallino Bianco 14) — si supera con l'AI multilingua via Cowork (v0.3).
+
 ## [0.2.4] — 2026-06-23
 ### Corretto
 - **La scansione mostra solo l'area cercata** (prima, dopo lo scan, mostrava l'intero archivio: cercando "Calabria"/"Trapani" si vedevano gli hotel dell'Alto Adige già valutati in cima). Verificato: scan di Calabria → solo hotel calabresi; gli hotel di altre aree spariscono.

@@ -183,13 +183,12 @@ export default function App() {
       : (b.score ?? -1) - (a.score ?? -1) || a.h.name.localeCompare(b.h.name, lang),
   );
 
+  // Statistiche calcolate SULL'AREA CORRENTE (non sull'archivio): cambiano con la scansione.
   const withSite = hotels.filter((h) => h.website).length;
   const unscored = hotels.filter((h) => h.website && !scores[hkey(h)]).length;
-  const scoredVals = Object.values(scores).filter((s) => s.website_ok);
-  const avgScore =
-    scoredVals.length > 0
-      ? Math.round(scoredVals.reduce((a, s) => a + s.family_fit_score, 0) / scoredVals.length)
-      : null;
+  const scoredInView = hotels.map(getScore).filter((s): s is number => s !== null);
+  const scoredCountView = scoredInView.length;
+  const strongCount = scoredInView.filter((s) => s >= 70).length;
 
   async function exportCsv() {
     const sep = ";";
@@ -304,12 +303,12 @@ export default function App() {
               <div className="stat-value">{hotels.length.toLocaleString(lang)}</div>
             </div>
             <div className="stat">
-              <div className="stat-label">{t("stats.avgscore")}</div>
-              <div className="stat-value">{avgScore ?? "—"}</div>
+              <div className="stat-label">{t("stats.scored")}</div>
+              <div className="stat-value">{scoredCountView.toLocaleString(lang)}<span className="stat-sub"> / {withSite.toLocaleString(lang)}</span></div>
             </div>
             <div className="stat">
-              <div className="stat-label">{t("stats.withsite")}</div>
-              <div className="stat-value">{withSite.toLocaleString(lang)}</div>
+              <div className="stat-label">{t("stats.strong")}</div>
+              <div className="stat-value">{strongCount.toLocaleString(lang)}</div>
             </div>
           </div>
 

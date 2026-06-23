@@ -154,6 +154,7 @@ body { margin: 0; background: var(--bg); }
 .stat-label { font-size: 12px; color: var(--text-2); }
 .stat-value { font-size: 24px; font-weight: 500; margin-top: 2px; }
 .stat-value.small { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stat-sub { font-size: 14px; font-weight: 400; color: var(--text-3); }
 
 .area-caption { font-size: 12px; color: var(--text-2); margin-top: -6px; }
 

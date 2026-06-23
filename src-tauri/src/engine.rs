@@ -456,7 +456,7 @@ async fn robots_blocks_root(client: &reqwest::Client, base: &reqwest::Url) -> bo
 
 const FAMILY_HREF_HINTS: &[&str] = &[
     "famigli", "famiglia", "bambini", "bimbi", "kids", "kinder", "family", "familie", "enfant",
-    "infantil", "child",
+    "infantil", "child", "miniclub",
 ];
 
 fn extract_family_links(html: &str, base: &reqwest::Url) -> Vec<String> {
@@ -644,6 +644,54 @@ mod tests {
         });
         println!("LIVE: {} hotel trovati a Ortisei", n);
         assert!(n > 0);
+    }
+
+    // Diagnostica fetch grezzo: `cargo test -- --ignored live_fetch_debug --nocapture`
+    #[test]
+    #[ignore]
+    fn live_fetch_debug() {
+        tauri::async_runtime::block_on(async {
+            let c = http_client().unwrap();
+            for u in [
+                "https://www.greif.it",
+                "https://www.laurin.it",
+                "https://www.cavallino-bianco.com",
+            ] {
+                match c.get(u).send().await {
+                    Ok(r) => println!("{:<32} status={} final={}", u, r.status(), r.url()),
+                    Err(e) => println!("{:<32} ERRORE: {}", u, e),
+                }
+            }
+        });
+    }
+
+    // Diagnostica punteggi su hotel reali: `cargo test -- --ignored live_score_samples --nocapture`
+    #[test]
+    #[ignore]
+    fn live_score_samples() {
+        let sites = [
+            ("Cavallino Bianco (family BZ)", "https://www.cavallino-bianco.com"),
+            ("Feuerstein (family)", "https://www.feuerstein.info"),
+            ("Sonnwies (family)", "https://www.sonnwies.com"),
+            ("Schwarzenstein (family)", "https://www.schwarzenstein.com"),
+            ("Hotel Greif Bolzano (city)", "https://www.greif.it"),
+            ("Parkhotel Laurin (city lux)", "https://www.laurin.it"),
+        ];
+        tauri::async_runtime::block_on(async {
+            let c = http_client().unwrap();
+            for (name, url) in sites {
+                let pages = gather_pages(&c, url).await;
+                let chars: usize = pages.iter().map(|(_, t)| t.chars().count()).sum();
+                let (score, signals) = score_pages(&pages);
+                let present: Vec<&str> =
+                    signals.iter().filter(|s| s.present).map(|s| s.key.as_str()).collect();
+                println!(
+                    "{:<30} score={:>3} pagine={} testo={:>6} segnali={:?}",
+                    name, score, pages.len(), chars, present
+                );
+                std::thread::sleep(std::time::Duration::from_millis(500));
+            }
+        });
     }
 
     // Prova LIVE mondiale: `cargo test -- --ignored live_discover_world --nocapture`
