@@ -2,6 +2,12 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.2.1] — 2026-06-23
+### Aggiunto
+- Vista risultati con barra strumenti: filtro **Solo con voto**, **ordinamento** (Family-fit ↓ / Nome), **voto minimo**, conteggio "Mostrati".
+- **Stampa** (con layout dedicato, anche → PDF dalla finestra di stampa) ed **Esporta CSV** (UTF-8, separatore `;`, apribile in Excel) tramite finestra "salva con nome".
+- Plugin `tauri-plugin-dialog` + comando `write_text_file` + permesso `dialog:allow-save`.
+
 ## [0.2.0] — 2026-06-23 (compilata e installata su macOS)
 ### Aggiunto
 - Build `.app` + `.dmg` (aarch64), firmata ad-hoc, installata in `/Applications`. Script `pnpm release` (build → firma → installa nuova → cancella vecchia → apri).

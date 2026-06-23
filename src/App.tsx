@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { save } from "@tauri-apps/plugin-dialog";
 import { useI18n, type Lang, type TKey } from "./i18n";
 import { APP_VERSION } from "./version";
 import "./App.css";
@@ -11,6 +12,7 @@ type Hotel = {
   city: string | null;
   country: string | null;
   website: string | null;
+  phone: string | null;
   source: string;
   lat: number;
   lon: number;
@@ -48,6 +50,10 @@ function BrandIcon({ size = 22 }: { size?: number }) {
 
 const hkey = (h: Hotel) => `${h.osm_type}/${h.osm_id}`;
 const tier = (s: number) => (s >= 80 ? "ok" : s >= 60 ? "warn" : "low");
+const csvCell = (v: unknown) => {
+  const s = String(v ?? "");
+  return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
 
 export default function App() {
   const { t, lang, setLang } = useI18n();
@@ -60,6 +66,9 @@ export default function App() {
   const [enriching, setEnriching] = useState(false);
   const [scoredCount, setScoredCount] = useState(0);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [onlyScored, setOnlyScored] = useState(false);
+  const [sortBy, setSortBy] = useState<"score" | "name">("score");
+  const [minScore, setMinScore] = useState(0);
 
   async function scan() {
     const q = query.trim();
@@ -106,7 +115,22 @@ export default function App() {
     };
     await Promise.all(Array.from({ length: Math.min(POOL, targets.length) }, worker));
     setEnriching(false);
+    setSortBy("score");
   }
+
+  const getScore = (h: Hotel): number | null => {
+    const s = scores[hkey(h)];
+    return s && s.website_ok ? s.family_fit_score : null;
+  };
+
+  let rows = hotels.map((h) => ({ h, score: getScore(h) }));
+  if (onlyScored) rows = rows.filter((r) => r.score !== null);
+  if (minScore > 0) rows = rows.filter((r) => (r.score ?? -1) >= minScore);
+  rows.sort((a, b) =>
+    sortBy === "name"
+      ? a.h.name.localeCompare(b.h.name, lang)
+      : (b.score ?? -1) - (a.score ?? -1) || a.h.name.localeCompare(b.h.name, lang),
+  );
 
   const withSite = hotels.filter((h) => h.website).length;
   const scoredVals = Object.values(scores).filter((s) => s.website_ok);
@@ -114,6 +138,27 @@ export default function App() {
     scoredVals.length > 0
       ? Math.round(scoredVals.reduce((a, s) => a + s.family_fit_score, 0) / scoredVals.length)
       : null;
+
+  async function exportCsv() {
+    const sep = ";";
+    const header = ["Nome", "Family-fit", "Città", "Paese", "Sito", "Telefono", "Lat", "Lon", "Servizi family"];
+    const lines = [header];
+    for (const { h, score } of rows) {
+      const sc = scores[hkey(h)];
+      const services = sc ? sc.signals.filter((s) => s.present).map((s) => t(("signal." + s.key) as TKey)).join(", ") : "";
+      lines.push([h.name, score ?? "", h.city ?? "", h.country ?? "", h.website ?? "", h.phone ?? "", h.lat, h.lon, services].map(String));
+    }
+    const csv = "﻿" + lines.map((r) => r.map(csvCell).join(sep)).join("\r\n");
+    const safe = (area || "hotels").replace(/[^a-z0-9]+/gi, "-").slice(0, 40);
+    try {
+      const path = await save({ defaultPath: `kidotel-${safe}.csv`, filters: [{ name: "CSV", extensions: ["csv"] }] });
+      if (path) await invoke("write_text_file", { path, content: csv });
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
+  const printDate = new Date().toLocaleDateString(lang);
 
   return (
     <div className="app">
@@ -188,61 +233,92 @@ export default function App() {
 
           {error && <div className="error">{t("scan.error")}: {error}</div>}
 
+          {hotels.length > 0 && (
+            <div className="toolbar">
+              <label className="tb-item">
+                <input type="checkbox" checked={onlyScored} onChange={(e) => setOnlyScored(e.currentTarget.checked)} />
+                {t("view.onlyscored")}
+              </label>
+              <label className="tb-item">
+                {t("view.sort")}
+                <select value={sortBy} onChange={(e) => setSortBy(e.currentTarget.value as "score" | "name")}>
+                  <option value="score">{t("view.sortscore")}</option>
+                  <option value="name">{t("view.sortname")}</option>
+                </select>
+              </label>
+              <label className="tb-item">
+                {t("view.minscore")}
+                <input
+                  type="number" min={0} max={100} value={minScore}
+                  onChange={(e) => setMinScore(Math.max(0, Math.min(100, Number(e.currentTarget.value) || 0)))}
+                  style={{ width: 60 }}
+                />
+              </label>
+              <span className="tb-count">{t("view.showing")}: {rows.length.toLocaleString(lang)}</span>
+              <span className="tb-spacer" />
+              <button className="tb-btn" onClick={() => window.print()}>{t("action.print")}</button>
+              <button className="tb-btn" onClick={exportCsv}>{t("action.export")}</button>
+            </div>
+          )}
+
           {hotels.length === 0 && !error ? (
             <div className="placeholder">{loading ? t("scan.scanning") : t("scan.empty")}</div>
           ) : (
-            <div className="table">
-              <div className="thead">
-                <span>{t("results.hotel")}</span>
-                <span>{t("results.score")}</span>
-                <span>{t("results.website")}</span>
-                <span>{t("results.proof")}</span>
+            <>
+              <div className="print-only print-head">
+                Kidotel Radar — {area} — {printDate} — {rows.length} hotel
               </div>
-              {hotels.map((h) => {
-                const k = hkey(h);
-                const sc = scores[k];
-                const isOpen = expanded === k;
-                return (
-                  <div key={k}>
-                    <div className="trow">
-                      <span className="cell-name">
-                        {h.name}
-                        <span className="cell-loc">
-                          {[h.city, h.country].filter(Boolean).join(", ") || "—"}
-                        </span>
-                      </span>
-                      <span>
-                        {sc && sc.website_ok ? (
-                          <span className={"score score-" + tier(sc.family_fit_score)}>
-                            {sc.family_fit_score}
+              <div className="table">
+                <div className="thead">
+                  <span>{t("results.hotel")}</span>
+                  <span>{t("results.score")}</span>
+                  <span>{t("results.website")}</span>
+                  <span className="no-print">{t("results.proof")}</span>
+                </div>
+                {rows.map(({ h, score }) => {
+                  const k = hkey(h);
+                  const sc = scores[k];
+                  const isOpen = expanded === k;
+                  return (
+                    <div key={k}>
+                      <div className="trow">
+                        <span className="cell-name">
+                          {h.name}
+                          <span className="cell-loc">
+                            {[h.city, h.country].filter(Boolean).join(", ") || "—"}
                           </span>
-                        ) : (
-                          <span className="muted">{t("results.notscored")}</span>
-                        )}
-                      </span>
-                      <span className="cell-site">
-                        {h.website ? (
-                          <a href={h.website} target="_blank" rel="noreferrer">{prettyHost(h.website)}</a>
-                        ) : (
-                          <span className="muted">{t("results.nosite")}</span>
-                        )}
-                      </span>
-                      <span>
-                        <button
-                          className="proof-toggle"
-                          disabled={!sc}
-                          onClick={() => setExpanded(isOpen ? null : k)}
-                          aria-expanded={isOpen}
-                        >
-                          {t("results.proof")}
-                        </button>
-                      </span>
+                        </span>
+                        <span>
+                          {score !== null ? (
+                            <span className={"score score-" + tier(score)}>{score}</span>
+                          ) : (
+                            <span className="muted">{t("results.notscored")}</span>
+                          )}
+                        </span>
+                        <span className="cell-site">
+                          {h.website ? (
+                            <a href={h.website} target="_blank" rel="noreferrer">{prettyHost(h.website)}</a>
+                          ) : (
+                            <span className="muted">{t("results.nosite")}</span>
+                          )}
+                        </span>
+                        <span className="no-print">
+                          <button
+                            className="proof-toggle"
+                            disabled={!sc}
+                            onClick={() => setExpanded(isOpen ? null : k)}
+                            aria-expanded={isOpen}
+                          >
+                            {t("results.proof")}
+                          </button>
+                        </span>
+                      </div>
+                      {isOpen && sc && <ProofPanel sc={sc} t={t} />}
                     </div>
-                    {isOpen && sc && <ProofPanel sc={sc} t={t} />}
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            </>
           )}
 
           <div className="footer">

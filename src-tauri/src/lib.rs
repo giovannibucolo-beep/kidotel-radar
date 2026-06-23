@@ -5,11 +5,13 @@ mod engine;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             engine::discover,
             engine::enrich_hotel,
             db::export_backup,
             db::import_backup,
+            db::write_text_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -99,6 +99,11 @@ pub fn export_backup(app: AppHandle, path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn write_text_file(path: String, content: String) -> Result<(), String> {
+    std::fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn import_backup(app: AppHandle, path: String) -> Result<(), String> {
     let dst = db_path(&app)?;
     if let Some(parent) = dst.parent() {
