@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { save, open } from "@tauri-apps/plugin-dialog";
 import { useI18n, type Lang, type TKey } from "./i18n";
@@ -57,8 +57,11 @@ type EnrichResult = {
   signals: SignalResult[];
 };
 
+type ScoreStats = { total: number; with_site: number; scored: number; strong: number };
+type UnscoredRef = { id: string; website: string };
+
 const EXAMPLES = ["Alto Adige", "Toscana", "Costa Brava", "Tokyo"];
-const POOL = 5;
+const POOL = 8;
 const RENDER_CAP = 500;
 
 function BrandIcon({ size = 22 }: { size?: number }) {
@@ -87,8 +90,6 @@ export default function App() {
   const [area, setArea] = useState<string | null>(null);
   const [scores, setScores] = useState<Record<string, EnrichResult>>({});
   const [enriching, setEnriching] = useState(false);
-  const [scoredCount, setScoredCount] = useState(0);
-  const [enrichTotal, setEnrichTotal] = useState(0);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [onlyScored, setOnlyScored] = useState(false);
   const [sortBy, setSortBy] = useState<"score" | "name">("score");
@@ -97,6 +98,8 @@ export default function App() {
   const [dbQuery, setDbQuery] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [archiveTotal, setArchiveTotal] = useState<number | null>(null);
+  const [scoreStats, setScoreStats] = useState<ScoreStats | null>(null);
+  const stopRef = useRef(false);
 
   // Costruisce hotels+scores da righe del DB (condiviso da archivio e ricerca).
   function applyRows(rows: HotelRow[]): number {
@@ -159,7 +162,16 @@ export default function App() {
     }
   }
 
+  async function refreshStats() {
+    try { setScoreStats(await invoke<ScoreStats>("score_stats")); } catch { /* anteprima */ }
+  }
+
   useEffect(() => { loadArchive(); }, []);
+  useEffect(() => {
+    refreshStats();
+    const id = setInterval(refreshStats, 4000); // barra di avanzamento sempre aggiornata
+    return () => clearInterval(id);
+  }, []);
 
   async function scan() {
     const q = query.trim();
@@ -181,35 +193,34 @@ export default function App() {
     }
   }
 
+  // Valuta family-fit (gratis) su TUTTO l'archivio: scorre i non valutati a blocchi,
+  // riprendibile e fermabile; la barra globale mostra l'avanzamento.
   async function enrichAll() {
     if (enriching) return;
-    // ripartibile: valuta solo gli hotel con sito e non ancora valutati
-    const targets = hotels.filter((h) => h.website && !scores[hkey(h)]);
-    if (targets.length === 0) return;
+    stopRef.current = false;
     setEnriching(true);
-    setScoredCount(0);
-    setEnrichTotal(targets.length);
-    let done = 0;
-    let idx = 0;
-    const worker = async () => {
-      while (idx < targets.length) {
-        const h = targets[idx++];
-        try {
-          const res = await invoke<EnrichResult>("enrich_hotel", {
-            args: { osmType: h.osm_type, osmId: h.osm_id, website: h.website },
-          });
-          setScores((prev) => ({ ...prev, [hkey(h)]: res }));
-        } catch {
-          /* salta il singolo hotel in errore */
-        }
-        done++;
-        setScoredCount(done);
+    try {
+      while (!stopRef.current) {
+        const batch = await invoke<UnscoredRef[]>("list_unscored", { limit: 80 });
+        if (batch.length === 0) break;
+        let idx = 0;
+        const worker = async () => {
+          while (idx < batch.length && !stopRef.current) {
+            const u = batch[idx++];
+            const [ot, oid] = u.id.split("/");
+            try { await invoke("enrich_hotel", { args: { osmType: ot, osmId: Number(oid), website: u.website } }); } catch { /* salta */ }
+          }
+        };
+        await Promise.all(Array.from({ length: POOL }, worker));
+        await refreshStats();
       }
-    };
-    await Promise.all(Array.from({ length: Math.min(POOL, targets.length) }, worker));
-    setEnriching(false);
-    setSortBy("score");
+    } finally {
+      setEnriching(false);
+      await refreshStats();
+      await loadArchive();
+    }
   }
+  function stopEnrich() { stopRef.current = true; }
 
   const getScore = (h: Hotel): number | null => {
     const s = scores[hkey(h)];
@@ -231,7 +242,6 @@ export default function App() {
 
   // Statistiche calcolate SULL'AREA CORRENTE (non sull'archivio): cambiano con la scansione.
   const withSite = hotels.filter((h) => h.website).length;
-  const unscored = hotels.filter((h) => h.website && !scores[hkey(h)]).length;
   const scoredInView = hotels.map(getScore).filter((s): s is number => s !== null);
   const scoredCountView = scoredInView.length;
   const strongCount = scoredInView.filter((s) => s >= 60).length;
@@ -417,14 +427,14 @@ export default function App() {
             </div>
           </div>
 
-          {hotels.length > 0 && (
-            <div className="panel">
-              <button className="enrich-btn" onClick={enrichAll} disabled={enriching || unscored === 0}>
-                <Icon name="sparkles" /> {enriching ? `${t("enrich.running")} ${scoredCount}/${enrichTotal}` : t("enrich.button")}
-              </button>
-              <button className="link-btn" onClick={loadArchive}><Icon name="database" size={16} /> {t("archive.show")}</button>
-            </div>
-          )}
+          <div className="panel">
+            {enriching ? (
+              <button className="enrich-btn" onClick={stopEnrich}><Icon name="stop" /> {t("enrich.stop")}</button>
+            ) : (
+              <button className="enrich-btn" onClick={enrichAll}><Icon name="sparkles" /> {t("enrich.button")}</button>
+            )}
+            <button className="link-btn" onClick={loadArchive}><Icon name="database" size={16} /> {t("archive.show")}</button>
+          </div>
 
           <div className="panel">
             <div className="panel-title"><Icon name="download" size={16} /> {t("data.title")}</div>
@@ -454,6 +464,21 @@ export default function App() {
               <div className="stat-value">{strongCount.toLocaleString(lang)}</div>
             </div>
           </div>
+
+          {scoreStats && scoreStats.with_site > 0 && (
+            <div className="progress">
+              <div className="progress-head">
+                <span>
+                  {t("progress.label")}: {scoreStats.scored.toLocaleString(lang)} / {scoreStats.with_site.toLocaleString(lang)}
+                  {enriching && <span className="progress-live"> · {t("progress.running")}</span>}
+                </span>
+                <span>{Math.round((scoreStats.scored / scoreStats.with_site) * 100)}%</span>
+              </div>
+              <div className="bar">
+                <div className="bar-fill" style={{ width: `${Math.min(100, Math.round((scoreStats.scored / scoreStats.with_site) * 100))}%` }} />
+              </div>
+            </div>
+          )}
 
           {area && <div className="area-caption">{area}</div>}
           {notice && <div className="notice">{notice}</div>}

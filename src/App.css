@@ -175,6 +175,12 @@ body { margin: 0; background: var(--bg); }
 
 .area-caption { font-size: 12px; color: var(--text-2); margin-top: -6px; }
 
+.progress { display: flex; flex-direction: column; gap: 6px; }
+.progress-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-2); }
+.progress-live { color: var(--brand-strong); }
+.bar { height: 8px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--brand); border-radius: 999px; transition: width 0.4s ease; }
+
 .toolbar {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   font-size: 13px; color: var(--text-2);

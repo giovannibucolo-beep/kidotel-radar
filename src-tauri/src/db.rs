@@ -181,6 +181,61 @@ pub fn count_hotels(app: AppHandle) -> Result<i64, String> {
         .map_err(|e| e.to_string())
 }
 
+#[derive(Serialize)]
+pub struct ScoreStats {
+    pub total: i64,
+    pub with_site: i64,
+    pub scored: i64,
+    pub strong: i64,
+}
+
+// Statistiche su TUTTO il database (per la barra di avanzamento globale).
+#[tauri::command]
+pub fn score_stats(app: AppHandle) -> Result<ScoreStats, String> {
+    let conn = open_db(&app)?;
+    conn.query_row(
+        "SELECT COUNT(*), SUM(website IS NOT NULL AND website<>''),
+                SUM(family_fit_score IS NOT NULL), SUM(family_fit_score>=60) FROM hotels",
+        [],
+        |r| {
+            Ok(ScoreStats {
+                total: r.get::<_, i64>(0)?,
+                with_site: r.get::<_, Option<i64>>(1)?.unwrap_or(0),
+                scored: r.get::<_, Option<i64>>(2)?.unwrap_or(0),
+                strong: r.get::<_, Option<i64>>(3)?.unwrap_or(0),
+            })
+        },
+    )
+    .map_err(|e| e.to_string())
+}
+
+#[derive(Serialize)]
+pub struct UnscoredRef {
+    pub id: String,
+    pub website: String,
+}
+
+// Prossimo blocco di hotel con sito e SENZA voto (per valutare tutto l'archivio).
+#[tauri::command]
+pub fn list_unscored(app: AppHandle, limit: Option<i64>) -> Result<Vec<UnscoredRef>, String> {
+    let conn = open_db(&app)?;
+    let lim = limit.unwrap_or(60).clamp(1, 1000);
+    let sql = format!(
+        "SELECT (osm_type || '/' || osm_id), website FROM hotels
+         WHERE family_fit_score IS NULL AND website IS NOT NULL AND website<>''
+         ORDER BY osm_id LIMIT {lim}"
+    );
+    let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| Ok(UnscoredRef { id: r.get(0)?, website: r.get(1)? }))
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
+}
+
 #[tauri::command]
 pub fn write_text_file(path: String, content: String) -> Result<(), String> {
     std::fs::write(&path, content).map_err(|e| e.to_string())

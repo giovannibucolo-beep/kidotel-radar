@@ -2,6 +2,13 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.3.7] — 2026-06-24
+### Aggiunto
+- **Barra di avanzamento della valutazione** (sempre visibile, si aggiorna ogni 4s): "Valutati N / M con sito (X%)". Risponde a "la valutazione sta continuando?".
+- **"Valuta family-fit" ora lavora su TUTTO l'archivio** (non solo i 5000 mostrati): scorre i non valutati a blocchi dal DB, **riprendibile** e **fermabile** (pulsante Stop). Comandi `score_stats` e `list_unscored`.
+### Chiarito
+- "Hotel trovati" mostra il **totale reale** (49.544); la tabella ne mostra 5.000 (i più rilevanti) solo per velocità — gli altri con Cerca/Scansiona. (I dati ci sono tutti.)
+
 ## [0.3.6] — 2026-06-24
 ### Migliorato
 - **Dashboard razionalizzata + Heroicons.** Due funzioni nette e separate, entrambe per paese/regione/provincia/città:
