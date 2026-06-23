@@ -12,7 +12,7 @@ export type MapPoint = {
 
 function colorFor(score: number | null): string {
   if (score === null) return "#9a9a93";
-  if (score >= 70) return "#1d9e75";
+  if (score >= 60) return "#1d9e75";
   if (score >= 40) return "#ef9f27";
   return "#9a9a93";
 }

@@ -96,7 +96,7 @@ fn call_tool(name: &str, args: &Value) -> Result<Value, String> {
     match name {
         "kidotel_stats" => {
             let mut stmt = conn
-                .prepare("SELECT COUNT(*), SUM(website IS NOT NULL AND website<>''), SUM(family_fit_score IS NOT NULL), SUM(family_fit_score>=70) FROM hotels")
+                .prepare("SELECT COUNT(*), SUM(website IS NOT NULL AND website<>''), SUM(family_fit_score IS NOT NULL), SUM(family_fit_score>=60) FROM hotels")
                 .map_err(|e| e.to_string())?;
             let row = stmt
                 .query_row([], |r| {
@@ -104,7 +104,7 @@ fn call_tool(name: &str, args: &Value) -> Result<Value, String> {
                         "totali": r.get::<_, i64>(0)?,
                         "con_sito": r.get::<_, Option<i64>>(1)?.unwrap_or(0),
                         "valutati": r.get::<_, Option<i64>>(2)?.unwrap_or(0),
-                        "family_hotel_ge70": r.get::<_, Option<i64>>(3)?.unwrap_or(0)
+                        "family_hotel_ge60": r.get::<_, Option<i64>>(3)?.unwrap_or(0)
                     }))
                 })
                 .map_err(|e| e.to_string())?;

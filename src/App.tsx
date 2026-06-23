@@ -195,7 +195,7 @@ export default function App() {
   const unscored = hotels.filter((h) => h.website && !scores[hkey(h)]).length;
   const scoredInView = hotels.map(getScore).filter((s): s is number => s !== null);
   const scoredCountView = scoredInView.length;
-  const strongCount = scoredInView.filter((s) => s >= 70).length;
+  const strongCount = scoredInView.filter((s) => s >= 60).length;
 
   async function exportCsv() {
     const sep = ";";
@@ -440,8 +440,8 @@ export default function App() {
             <>
               <MapView points={points} />
               <div className="map-legend">
-                <span><i className="dot" style={{ background: "#1d9e75" }} /> ≥70</span>
-                <span><i className="dot" style={{ background: "#ef9f27" }} /> 40–69</span>
+                <span><i className="dot" style={{ background: "#1d9e75" }} /> ≥60</span>
+                <span><i className="dot" style={{ background: "#ef9f27" }} /> 40–59</span>
                 <span><i className="dot" style={{ background: "#9a9a93" }} /> &lt;40 / —</span>
               </div>
             </>

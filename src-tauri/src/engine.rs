@@ -184,6 +184,14 @@ async fn overpass_hotels(client: &reqwest::Client, b: &Bbox) -> Result<Vec<Hotel
 pub async fn discover(app: tauri::AppHandle, query: String) -> Result<DiscoverResult, String> {
     let client = http_client()?;
     let bbox = nominatim_bbox(&client, &query).await?;
+    // Un intero continente ha milioni di hotel: Overpass va in timeout. Guida verso un'area gestibile.
+    let area_deg2 = (bbox.n - bbox.s).abs() * (bbox.e - bbox.w).abs();
+    if area_deg2 > 2000.0 {
+        return Err(
+            "Area troppo grande per una singola scansione (sembra un intero continente). Scegli un paese, una regione o una città — es. \"Kenya\", \"Andalusia\", \"Cape Town\"."
+                .to_string(),
+        );
+    }
     let hotels = overpass_hotels(&client, &bbox).await?;
     {
         let conn = crate::db::open_db(&app)?;
