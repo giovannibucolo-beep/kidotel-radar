@@ -20,10 +20,12 @@
 - UI verificata nel dev server: bilingue **IT/EN** (ogni stringa) + temi **chiaro/scuro** ok.
 - Nota: la scansione reale (`invoke discover`) gira solo nell'app Tauri, non nel browser di anteprima.
 
-## Prossimo passo (milestone v0.2)
-- Fase **ARRICCHISCI**: crawl del sito ufficiale (robots-aware, cache) + estrazione family con Claude (JSON, citazione obbligatoria) + **verifica verbatim** della citazione.
-- Calcolo `family_fit_score` + `score_breakdown` salvati nel DB.
-- Schermata impostazioni con inserimento **chiave API Claude**.
+## Prossimo passo (milestone v0.2 — GRATIS, niente API)
+- Fase **ARRICCHISCI**: crawl del sito ufficiale (robots-aware, cache).
+- Estrazione family **a regole, multilingue** (no Claude API): frasi-chiave per ogni segnale + **citazione verbatim ri-verificata** carattere per carattere (scarta se assente).
+- Calcolo `family_fit_score` + `score_breakdown` salvati e mostrati (badge + riquadro "Prova").
+- (Claude API resta opzionale; l'AI pesante andrà su Cowork via MCP in v0.3.)
+- Direzione completa v0.2→v0.7 in ROADMAP.md ("Revenue & Cowork").
 
 ## Note operative
 - DB locale in app-data dir (`co.kidotel.radar`).

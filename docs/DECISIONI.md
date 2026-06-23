@@ -12,6 +12,12 @@
 - **Niente scraping di OTA (Booking/Expedia/TripAdvisor) né ripubblicazione delle selezioni dei club family.** Motivo: ToS + diritto sui generis UE sui database. Le directory family si usano solo come semi/validazione (nome → ri-deriva dal sito), o via partnership.
 - **Outreach email rimandato e da blindare GDPR/ePrivacy** (IT/DE severi): cold email B2B in UE in genere richiede consenso; usare solo indirizzi pubblicati + informativa Art.14 + opt-out. Decisione: NON includere outreach nei primi rilasci.
 
+## 2026-06-23 — Chiarimenti committente + direzione Revenue & Cowork
+- **"PMU" = il pacchetto/manifest di aggiornamento** che generiamo a ogni release (Tauri Updater): bundle firmato + `latest.json`; l'app si auto-aggiorna. Da decidere in v0.4 se l'origine è un file locale consegnato o un link.
+- **Nessuna chiave API obbligatoria.** Il committente non ha API e la scoperta (OSM) è gratis. Decisione: il **family-fit si calcola con un matcher multilingue a regole** (gratis), con citazione verbatim verificata → rispetta "zero dati inventati". Claude API resta **opzionale** (potenziamento). L'intelligenza pesante (email, report) si sposta su **Cowork** via MCP, usando il piano Claude dell'utente → niente costi API nell'app.
+- **Adottata la roadmap "Revenue & Cowork" (moduli A–E)** dal prompt-specifica del committente. Vedi ROADMAP v0.2→v0.7.
+- **Affiliazioni = vero collo di bottiglia** (approvazione partner, volumi minimi): partire da rete a bassa barriera (Travelpayouts/Awin→Booking), poi Expedia EPS/Google/TripAdvisor. Tassi mai hard-coded.
+- **Cold email UE:** ribadito che legittimo interesse copre il trattamento ma non bypassa la regola di canale ePrivacy/Garante (IT/DE severi). Tutele necessarie ma non sufficienti → verdetto paese-per-paese prima di scalare.
+
 ## Vincoli noti
-- **`.exe` non si compila da macOS.** Serve Windows o CI (GitHub Actions con runner windows). Deciso: predisporre la CI quando si arriva alla distribuzione Windows.
-- **Updater ("pmu"):** richiede un endpoint remoto per il feed. In attesa di chiarimento dal committente su significato e hosting.
+- **`.exe` non si compila da macOS.** Serve Windows o CI (GitHub Actions con runner windows). Deciso: predisporre la CI quando si arriva alla distribuzione Windows (v0.4).
