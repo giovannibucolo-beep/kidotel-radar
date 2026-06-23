@@ -119,43 +119,57 @@ pub struct HotelRow {
     pub enrichment: Option<String>,
 }
 
+fn row_to_hotel(r: &rusqlite::Row) -> rusqlite::Result<HotelRow> {
+    Ok(HotelRow {
+        osm_type: r.get(0)?,
+        osm_id: r.get(1)?,
+        name: r.get(2)?,
+        city: r.get(3)?,
+        country: r.get(4)?,
+        website: r.get(5)?,
+        phone: r.get(6)?,
+        lat: r.get(7)?,
+        lon: r.get(8)?,
+        source: r.get(9)?,
+        family_fit_score: r.get(10)?,
+        score_breakdown: r.get(11)?,
+        enrichment: r.get(12)?,
+        region: r.get(13)?,
+        province: r.get(14)?,
+    })
+}
+
+const HOTEL_COLS: &str = "osm_type, osm_id, name, city, country, website, phone, lat, lon, source,
+    family_fit_score, score_breakdown, enrichment, region, province";
+
+// Cerca/elenca dall'archivio. `search` filtra per nome/città/provincia/regione/paese (tutti i record).
 #[tauri::command]
-pub fn list_hotels(app: AppHandle, limit: Option<i64>) -> Result<Vec<HotelRow>, String> {
+pub fn list_hotels(app: AppHandle, limit: Option<i64>, search: Option<String>) -> Result<Vec<HotelRow>, String> {
     let conn = open_db(&app)?;
-    // Con archivi grandi (decine di migliaia) carichiamo i più rilevanti (voto più alto) per restare scattanti.
     let lim = limit.unwrap_or(5000).clamp(1, 200000);
-    let sql = format!(
-        "SELECT osm_type, osm_id, name, city, country, website, phone, lat, lon, source,
-                family_fit_score, score_breakdown, enrichment, region, province
-         FROM hotels
-         ORDER BY (family_fit_score IS NULL), family_fit_score DESC, name COLLATE NOCASE
-         LIMIT {lim}"
-    );
-    let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
-    let rows = stmt
-        .query_map([], |r| {
-            Ok(HotelRow {
-                osm_type: r.get(0)?,
-                osm_id: r.get(1)?,
-                name: r.get(2)?,
-                city: r.get(3)?,
-                country: r.get(4)?,
-                website: r.get(5)?,
-                phone: r.get(6)?,
-                lat: r.get(7)?,
-                lon: r.get(8)?,
-                source: r.get(9)?,
-                family_fit_score: r.get(10)?,
-                score_breakdown: r.get(11)?,
-                enrichment: r.get(12)?,
-                region: r.get(13)?,
-                province: r.get(14)?,
-            })
-        })
-        .map_err(|e| e.to_string())?;
+    let term = search.unwrap_or_default();
+    let term = term.trim();
+    let order = "ORDER BY (family_fit_score IS NULL), family_fit_score DESC, name COLLATE NOCASE";
     let mut out = Vec::new();
-    for row in rows {
-        out.push(row.map_err(|e| e.to_string())?);
+    if term.is_empty() {
+        let sql = format!("SELECT {HOTEL_COLS} FROM hotels {order} LIMIT {lim}");
+        let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
+        let rows = stmt.query_map([], row_to_hotel).map_err(|e| e.to_string())?;
+        for row in rows {
+            out.push(row.map_err(|e| e.to_string())?);
+        }
+    } else {
+        let sql = format!(
+            "SELECT {HOTEL_COLS} FROM hotels
+             WHERE name LIKE ?1 OR city LIKE ?1 OR region LIKE ?1 OR province LIKE ?1 OR country LIKE ?1
+             {order} LIMIT {lim}"
+        );
+        let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
+        let pattern = format!("%{term}%");
+        let rows = stmt.query_map(params![pattern], row_to_hotel).map_err(|e| e.to_string())?;
+        for row in rows {
+            out.push(row.map_err(|e| e.to_string())?);
+        }
     }
     Ok(out)
 }

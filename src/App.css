@@ -93,23 +93,35 @@ body { margin: 0; background: var(--bg); }
 }
 .chip:hover { border-color: var(--brand); color: var(--brand-strong); }
 
+.panel {
+  display: flex; flex-direction: column; gap: 8px;
+  padding-top: 12px; margin-top: 4px; border-top: 1px solid var(--border);
+}
+.sidebar > .panel:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+.panel-title { font-size: 12px; font-weight: 500; color: var(--text-2); display: flex; align-items: center; gap: 7px; }
+
 .scan-btn {
-  margin-top: 6px; height: 40px; border: none; border-radius: var(--radius-sm);
+  height: 40px; border: none; border-radius: var(--radius-sm);
   background: var(--brand); color: #fff; font-weight: 500; font-size: 15px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
 }
 .scan-btn:hover { background: var(--brand-strong); }
 .scan-btn:disabled { opacity: 0.5; cursor: default; }
+.scan-btn.outline { background: transparent; color: var(--brand-strong); border: 1px solid var(--brand); }
+.scan-btn.outline:hover { background: var(--surface-2); }
 
 .enrich-btn {
   height: 38px; border: 1px solid var(--brand); border-radius: var(--radius-sm);
-  background: transparent; color: var(--brand-strong); font-weight: 500; font-size: 14px; cursor: pointer;
+  background: var(--surface-2); color: var(--brand-strong); font-weight: 500; font-size: 14px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
 }
-.enrich-btn:hover { background: var(--surface-2); }
+.enrich-btn:hover { background: var(--surface); }
 .enrich-btn:disabled { opacity: 0.5; cursor: default; }
 
 .link-btn {
   background: none; border: none; color: var(--text-2); font-size: 13px;
-  cursor: pointer; padding: 2px 0; text-align: left; text-decoration: underline;
+  cursor: pointer; padding: 2px 0; text-align: left;
+  display: inline-flex; align-items: center; gap: 7px;
 }
 .link-btn:hover { color: var(--brand-strong); }
 
@@ -180,11 +192,12 @@ body { margin: 0; background: var(--bg); }
 .tb-btn {
   font-size: 13px; padding: 6px 12px; border-radius: var(--radius-sm);
   border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
 }
 .tb-btn:hover { border-color: var(--brand); color: var(--brand-strong); }
 
 .seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
-.seg-btn { font-size: 13px; padding: 6px 12px; border: none; background: var(--surface); color: var(--text-2); cursor: pointer; }
+.seg-btn { font-size: 13px; padding: 6px 12px; border: none; background: var(--surface); color: var(--text-2); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .seg-btn + .seg-btn { border-left: 1px solid var(--border); }
 .seg-btn.active { background: var(--brand); color: #fff; }
 
@@ -246,11 +259,7 @@ body { margin: 0; background: var(--bg); }
   margin-top: auto; display: flex; align-items: center; gap: 8px;
   font-size: 12px; color: var(--text-2); padding-top: 10px;
 }
-.shield {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 18px; height: 18px; border-radius: 50%;
-  background: var(--brand); color: #fff; font-size: 11px;
-}
+.footer-ico { color: var(--brand); display: inline-flex; align-items: center; }
 
 @media (prefers-color-scheme: dark) {
   :root {

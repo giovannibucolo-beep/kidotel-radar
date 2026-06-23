@@ -2,7 +2,7 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.3.5` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.3.6` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-23
 
 ## Fatto

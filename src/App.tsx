@@ -4,6 +4,7 @@ import { save, open } from "@tauri-apps/plugin-dialog";
 import { useI18n, type Lang, type TKey } from "./i18n";
 import { APP_VERSION } from "./version";
 import MapView, { type MapPoint } from "./components/MapView";
+import { Icon } from "./components/Icon";
 import "./App.css";
 
 type Hotel = {
@@ -93,44 +94,68 @@ export default function App() {
   const [sortBy, setSortBy] = useState<"score" | "name">("score");
   const [minScore, setMinScore] = useState(0);
   const [viewMode, setViewMode] = useState<"table" | "map">("table");
-  const [search, setSearch] = useState("");
+  const [dbQuery, setDbQuery] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [archiveTotal, setArchiveTotal] = useState<number | null>(null);
 
-  // Carica l'archivio salvato (SQLite) all'avvio: i dati raccolti persistono tra le sessioni.
+  // Costruisce hotels+scores da righe del DB (condiviso da archivio e ricerca).
+  function applyRows(rows: HotelRow[]): number {
+    const hs: Hotel[] = [];
+    const sc: Record<string, EnrichResult> = {};
+    for (const r of rows) {
+      hs.push({
+        osm_type: r.osm_type, osm_id: r.osm_id, name: r.name,
+        city: r.city, country: r.country, region: r.region, province: r.province,
+        website: r.website, phone: r.phone,
+        source: r.source || "OpenStreetMap", lat: r.lat, lon: r.lon,
+      });
+      if (r.family_fit_score !== null && r.score_breakdown) {
+        let signals: SignalResult[] = [];
+        try { signals = JSON.parse(r.score_breakdown); } catch { /* ignore */ }
+        let website_ok = true;
+        try { if (r.enrichment) website_ok = JSON.parse(r.enrichment).website_ok ?? true; } catch { /* ignore */ }
+        sc[`${r.osm_type}/${r.osm_id}`] = { website_ok, pages_fetched: 0, family_fit_score: r.family_fit_score, signals };
+      }
+    }
+    setHotels(hs);
+    setScores(sc);
+    setExpanded(null);
+    return hs.length;
+  }
+
+  // Mostra l'INTERO archivio salvato (i più rilevanti per voto).
   async function loadArchive() {
     try {
       const rows = await invoke<HotelRow[]>("list_hotels", { limit: 5000 });
-      const hs: Hotel[] = [];
-      const sc: Record<string, EnrichResult> = {};
-      for (const r of rows) {
-        hs.push({
-          osm_type: r.osm_type, osm_id: r.osm_id, name: r.name,
-          city: r.city, country: r.country, region: r.region, province: r.province,
-          website: r.website, phone: r.phone,
-          source: r.source || "OpenStreetMap", lat: r.lat, lon: r.lon,
-        });
-        if (r.family_fit_score !== null && r.score_breakdown) {
-          let signals: SignalResult[] = [];
-          try { signals = JSON.parse(r.score_breakdown); } catch { /* ignore */ }
-          let website_ok = true;
-          try { if (r.enrichment) website_ok = JSON.parse(r.enrichment).website_ok ?? true; } catch { /* ignore */ }
-          sc[`${r.osm_type}/${r.osm_id}`] = {
-            website_ok, pages_fetched: 0, family_fit_score: r.family_fit_score, signals,
-          };
-        }
-      }
-      setHotels(hs);
-      setScores(sc);
-      let total = hs.length;
+      const n = applyRows(rows);
+      let total = n;
       try { total = await invoke<number>("count_hotels"); } catch { /* ignora */ }
       setArchiveTotal(total);
-      if (hs.length > 0) {
-        const capped = total > hs.length ? ` — ${t("view.showing")} ${hs.length.toLocaleString(lang)} / ${total.toLocaleString(lang)}` : "";
+      setDbQuery("");
+      if (n > 0) {
+        const capped = total > n ? ` — ${t("view.showing")} ${n.toLocaleString(lang)} / ${total.toLocaleString(lang)}` : "";
         setArea(t("archive.label") + capped);
       }
     } catch {
-      /* nel browser di anteprima non c'è Tauri: nessun archivio da caricare */
+      /* nel browser di anteprima non c'è Tauri */
+    }
+  }
+
+  // CERCA nel database (per nome/città/provincia/regione/paese): non scarica nulla di nuovo.
+  async function doDbSearch() {
+    const q = dbQuery.trim();
+    if (!q || loading) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const rows = await invoke<HotelRow[]>("list_hotels", { limit: 5000, search: q });
+      const n = applyRows(rows);
+      setArchiveTotal(n);
+      setArea(`${t("search.results")}: «${q}» (${n.toLocaleString(lang)}${n >= 5000 ? "+" : ""})`);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -194,10 +219,6 @@ export default function App() {
   let rows = hotels.map((h) => ({ h, score: getScore(h) }));
   if (onlyScored) rows = rows.filter((r) => r.score !== null);
   if (minScore > 0) rows = rows.filter((r) => (r.score ?? -1) >= minScore);
-  if (search.trim()) {
-    const qq = search.trim().toLowerCase();
-    rows = rows.filter(({ h }) => (h.name + " " + locationOf(h)).toLowerCase().includes(qq));
-  }
   rows.sort((a, b) =>
     sortBy === "name"
       ? a.h.name.localeCompare(b.h.name, lang)
@@ -361,41 +382,60 @@ export default function App() {
 
       <div className="body">
         <aside className="sidebar">
-          <div className="side-title">{t("area.title")}</div>
-          <input
-            className="search"
-            value={query}
-            onChange={(e) => setQuery(e.currentTarget.value)}
-            onKeyDown={(e) => e.key === "Enter" && scan()}
-            placeholder={t("area.search")}
-          />
-          <div className="hint">{t("area.hint")}</div>
-          <div className="examples-label">{t("area.examples")}</div>
-          <div className="examples">
-            {EXAMPLES.map((ex) => (
-              <button key={ex} className="chip" onClick={() => setQuery(ex)}>
-                {ex}
-              </button>
-            ))}
-          </div>
-          <button className="scan-btn" onClick={scan} disabled={loading || !query.trim()}>
-            {loading ? t("scan.scanning") : t("scan.button")}
-          </button>
-          {hotels.length > 0 && (
-            <button className="enrich-btn" onClick={enrichAll} disabled={enriching || unscored === 0}>
-              {enriching ? `${t("enrich.running")} ${scoredCount}/${enrichTotal}` : t("enrich.button")}
+          <div className="panel">
+            <div className="panel-title"><Icon name="database" size={16} /> {t("search.title")}</div>
+            <input
+              className="search"
+              value={dbQuery}
+              onChange={(e) => setDbQuery(e.currentTarget.value)}
+              onKeyDown={(e) => e.key === "Enter" && doDbSearch()}
+              placeholder={t("loc.placeholder")}
+            />
+            <button className="scan-btn outline" onClick={doDbSearch} disabled={loading || !dbQuery.trim()}>
+              <Icon name="search" /> {t("search.button")}
             </button>
-          )}
-          <button className="link-btn" onClick={loadArchive}>{t("archive.show")}</button>
-          <div className="ai-block">
-            <div className="ai-title">{t("ai.title")}</div>
-            <button className="link-btn" onClick={exportAiBatch}>{t("ai.export")}</button>
-            <button className="link-btn" onClick={importAiScores}>{t("ai.import")}</button>
+            <div className="hint">{t("search.hint")}</div>
           </div>
-          <div className="ai-block">
-            <div className="ai-title">{t("data.title")}</div>
-            <button className="link-btn" onClick={exportBackup}>{t("backup.export")}</button>
-            <button className="link-btn" onClick={importBackup}>{t("backup.import")}</button>
+
+          <div className="panel">
+            <div className="panel-title"><Icon name="signal" size={16} /> {t("scan.title")}</div>
+            <input
+              className="search"
+              value={query}
+              onChange={(e) => setQuery(e.currentTarget.value)}
+              onKeyDown={(e) => e.key === "Enter" && scan()}
+              placeholder={t("loc.placeholder")}
+            />
+            <button className="scan-btn" onClick={scan} disabled={loading || !query.trim()}>
+              <Icon name="signal" /> {loading ? t("scan.scanning") : t("scan.button")}
+            </button>
+            <div className="hint">{t("scan.hint")}</div>
+            <div className="examples">
+              {EXAMPLES.map((ex) => (
+                <button key={ex} className="chip" onClick={() => setQuery(ex)}>{ex}</button>
+              ))}
+            </div>
+          </div>
+
+          {hotels.length > 0 && (
+            <div className="panel">
+              <button className="enrich-btn" onClick={enrichAll} disabled={enriching || unscored === 0}>
+                <Icon name="sparkles" /> {enriching ? `${t("enrich.running")} ${scoredCount}/${enrichTotal}` : t("enrich.button")}
+              </button>
+              <button className="link-btn" onClick={loadArchive}><Icon name="database" size={16} /> {t("archive.show")}</button>
+            </div>
+          )}
+
+          <div className="panel">
+            <div className="panel-title"><Icon name="download" size={16} /> {t("data.title")}</div>
+            <button className="link-btn" onClick={exportBackup}><Icon name="download" size={16} /> {t("backup.export")}</button>
+            <button className="link-btn" onClick={importBackup}><Icon name="upload" size={16} /> {t("backup.import")}</button>
+          </div>
+
+          <div className="panel">
+            <div className="panel-title"><Icon name="sparkles" size={16} /> {t("ai.title")}</div>
+            <button className="link-btn" onClick={exportAiBatch}><Icon name="download" size={16} /> {t("ai.export")}</button>
+            <button className="link-btn" onClick={importAiScores}><Icon name="upload" size={16} /> {t("ai.import")}</button>
           </div>
         </aside>
 
@@ -422,7 +462,6 @@ export default function App() {
 
           {hotels.length > 0 && (
             <div className="toolbar">
-              <input className="tb-search" type="text" value={search} onChange={(e) => setSearch(e.currentTarget.value)} placeholder={t("view.search")} />
               <label className="tb-item">
                 <input type="checkbox" checked={onlyScored} onChange={(e) => setOnlyScored(e.currentTarget.checked)} />
                 {t("view.onlyscored")}
@@ -445,11 +484,11 @@ export default function App() {
               <span className="tb-count">{t("view.showing")}: {rows.length.toLocaleString(lang)}</span>
               <span className="tb-spacer" />
               <div className="seg" role="group">
-                <button className={"seg-btn" + (viewMode === "table" ? " active" : "")} onClick={() => setViewMode("table")}>{t("view.table")}</button>
-                <button className={"seg-btn" + (viewMode === "map" ? " active" : "")} onClick={() => setViewMode("map")}>{t("view.map")}</button>
+                <button className={"seg-btn" + (viewMode === "table" ? " active" : "")} onClick={() => setViewMode("table")}><Icon name="list" size={15} /> {t("view.table")}</button>
+                <button className={"seg-btn" + (viewMode === "map" ? " active" : "")} onClick={() => setViewMode("map")}><Icon name="map" size={15} /> {t("view.map")}</button>
               </div>
-              <button className="tb-btn" onClick={printReport}>{t("action.print")}</button>
-              <button className="tb-btn" onClick={exportCsv}>{t("action.export")}</button>
+              <button className="tb-btn" onClick={printReport}><Icon name="printer" size={15} /> {t("action.print")}</button>
+              <button className="tb-btn" onClick={exportCsv}><Icon name="download" size={15} /> {t("action.export")}</button>
             </div>
           )}
 
@@ -527,7 +566,7 @@ export default function App() {
           )}
 
           <div className="footer">
-            <span className="shield" aria-hidden="true">✓</span>
+            <span className="footer-ico" aria-hidden="true"><Icon name="check" size={16} /></span>
             {t("footer.proof")}
           </div>
         </main>
