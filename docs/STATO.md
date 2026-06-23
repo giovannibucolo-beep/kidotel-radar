@@ -2,7 +2,7 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.3.0` (installata su macOS)
+- **Versione:** `0.3.1` (installata su macOS)
 - **Aggiornato:** 2026-06-23
 
 ## Fatto

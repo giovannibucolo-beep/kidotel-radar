@@ -289,6 +289,32 @@ export default function App() {
     }
   }
 
+  // Backup: l'intero database in un file .sqlite, esportabile e re-importabile.
+  async function exportBackup() {
+    try {
+      const path = await save({ defaultPath: "kidotel-radar-backup.sqlite", filters: [{ name: "SQLite", extensions: ["sqlite"] }] });
+      if (path) {
+        await invoke("export_backup", { path });
+        setNotice(t("backup.exported"));
+      }
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
+  async function importBackup() {
+    try {
+      const path = await open({ multiple: false, filters: [{ name: "SQLite", extensions: ["sqlite"] }] });
+      if (typeof path === "string") {
+        await invoke("import_backup", { path });
+        await loadArchive();
+        setNotice(t("backup.imported"));
+      }
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
   const printDate = new Date().toLocaleDateString(lang);
 
   return (
@@ -348,6 +374,11 @@ export default function App() {
             <button className="link-btn" onClick={exportAiBatch}>{t("ai.export")}</button>
             <button className="link-btn" onClick={importAiScores}>{t("ai.import")}</button>
           </div>
+          <div className="ai-block">
+            <div className="ai-title">{t("data.title")}</div>
+            <button className="link-btn" onClick={exportBackup}>{t("backup.export")}</button>
+            <button className="link-btn" onClick={importBackup}>{t("backup.import")}</button>
+          </div>
         </aside>
 
         <main className="main">
@@ -406,7 +437,14 @@ export default function App() {
           {hotels.length === 0 && !error ? (
             <div className="placeholder">{loading ? t("scan.scanning") : t("scan.empty")}</div>
           ) : viewMode === "map" ? (
-            <MapView points={points} />
+            <>
+              <MapView points={points} />
+              <div className="map-legend">
+                <span><i className="dot" style={{ background: "#1d9e75" }} /> ≥70</span>
+                <span><i className="dot" style={{ background: "#ef9f27" }} /> 40–69</span>
+                <span><i className="dot" style={{ background: "#9a9a93" }} /> &lt;40 / —</span>
+              </div>
+            </>
           ) : (
             <>
               <div className="print-only print-head">

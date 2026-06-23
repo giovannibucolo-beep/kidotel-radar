@@ -2,6 +2,11 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.3.1] — 2026-06-23
+### Aggiunto
+- **Backup del database** (requisito): sidebar "Dati" → **Esporta backup** / **Importa backup** (file `.sqlite` completo, re-importabile). Verificato nel frontend.
+- **Legenda colori sulla mappa** (≥70 verde · 40–69 ambra · <40/non valutato grigio).
+
 ## [0.3.0] — 2026-06-23
 ### Aggiunto
 - **AiScorer via Cowork (ponte a lotti).** Sidebar "AI · Cowork": **Esporta lotto per AI** (gli hotel senza voto con sito → `kidotel-ai-batch.json`, con istruzioni+schema) e **Importa valutazioni AI** (`results.json` → voti nel DB, sorgente "ai-cowork"). Niente chiave API: l'AI gira in Cowork col tuo Claude e legge i siti in qualsiasi lingua. Contratto in `docs/COWORK-AI-SCORING.md`.
