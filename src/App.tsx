@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { save } from "@tauri-apps/plugin-dialog";
+import { save, open } from "@tauri-apps/plugin-dialog";
 import { useI18n, type Lang, type TKey } from "./i18n";
 import { APP_VERSION } from "./version";
 import MapView, { type MapPoint } from "./components/MapView";
@@ -89,6 +89,7 @@ export default function App() {
   const [sortBy, setSortBy] = useState<"score" | "name">("score");
   const [minScore, setMinScore] = useState(0);
   const [viewMode, setViewMode] = useState<"table" | "map">("table");
+  const [notice, setNotice] = useState<string | null>(null);
 
   // Carica l'archivio salvato (SQLite) all'avvio: i dati raccolti persistono tra le sessioni.
   async function loadArchive() {
@@ -246,6 +247,48 @@ export default function App() {
     }
   }
 
+  // AI via Cowork: esporta gli hotel da valutare (nome+sito); Cowork/Claude li legge e li valuta;
+  // poi reimporti i voti. Niente chiave API, supera il tetto delle regole.
+  async function exportAiBatch() {
+    const targets = rows.filter((r) => r.h.website && r.score === null).slice(0, 300);
+    if (targets.length === 0) {
+      setNotice(t("ai.none"));
+      return;
+    }
+    const batch = {
+      app: "Kidotel Radar",
+      task: "family_fit_scoring",
+      istruzioni:
+        "Per ogni hotel apri il sito (campo website), leggi le pagine rilevanti in qualsiasi lingua e valuta quanto è adatto alle famiglie con bambini (family_fit_score 0-100). Per ogni servizio family trovato aggiungi un elemento in breakdown con key (kids_club|kids_facilities|family_rooms|childcare|kids_dining|activities_age|safety), present=true, quote (frase citata dal sito) e url. NON inventare: se non c'è prova sul sito, non assegnare il punto. Restituisci un JSON con chiave 'results' e lo stesso 'id' di ogni hotel.",
+      schema_risultati: {
+        results: [{ id: "node/123", family_fit_score: 0, breakdown: [{ key: "kids_club", present: true, quote: "…", url: "…" }] }],
+      },
+      hotels: targets.map(({ h }) => ({ id: hkey(h), name: h.name, website: h.website, city: h.city, country: h.country })),
+    };
+    try {
+      const path = await save({ defaultPath: "kidotel-ai-batch.json", filters: [{ name: "JSON", extensions: ["json"] }] });
+      if (path) {
+        await invoke("write_text_file", { path, content: JSON.stringify(batch, null, 2) });
+        setNotice(`${targets.length} ${t("ai.exported")}`);
+      }
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
+  async function importAiScores() {
+    try {
+      const path = await open({ multiple: false, filters: [{ name: "JSON", extensions: ["json"] }] });
+      if (typeof path === "string") {
+        const n = await invoke<number>("import_ai_scores", { path });
+        await loadArchive();
+        setNotice(`${n} ${t("ai.imported")}`);
+      }
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
   const printDate = new Date().toLocaleDateString(lang);
 
   return (
@@ -300,6 +343,11 @@ export default function App() {
             </button>
           )}
           <button className="link-btn" onClick={loadArchive}>{t("archive.show")}</button>
+          <div className="ai-block">
+            <div className="ai-title">{t("ai.title")}</div>
+            <button className="link-btn" onClick={exportAiBatch}>{t("ai.export")}</button>
+            <button className="link-btn" onClick={importAiScores}>{t("ai.import")}</button>
+          </div>
         </aside>
 
         <main className="main">
@@ -319,6 +367,7 @@ export default function App() {
           </div>
 
           {area && <div className="area-caption">{area}</div>}
+          {notice && <div className="notice">{notice}</div>}
 
           {error && <div className="error">{t("scan.error")}: {error}</div>}
 

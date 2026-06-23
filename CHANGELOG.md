@@ -2,6 +2,16 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.3.0] — 2026-06-23
+### Aggiunto
+- **AiScorer via Cowork (ponte a lotti).** Sidebar "AI · Cowork": **Esporta lotto per AI** (gli hotel senza voto con sito → `kidotel-ai-batch.json`, con istruzioni+schema) e **Importa valutazioni AI** (`results.json` → voti nel DB, sorgente "ai-cowork"). Niente chiave API: l'AI gira in Cowork col tuo Claude e legge i siti in qualsiasi lingua. Contratto in `docs/COWORK-AI-SCORING.md`.
+- Comandi Rust `import_ai_scores`, `read_text_file`; permesso `dialog:allow-open`.
+### Verificato
+- Plumbing nel frontend: export costruisce il lotto coi soli hotel con sito senza voto (id corretti, istruzioni+schema); import chiama `import_ai_scores` e aggiorna l'archivio.
+- Qualità AI dimostrata: Cavallino Bianco a regole 26 → l'AI (sola homepage) 62, con citazioni. Supera il tetto del crawl/lingue.
+### Nota
+- Il connettore MCP live (Cowork interroga il DB senza file) è il prossimo passo (v0.4): non verificabile da me ora, quindi non incluso finché non collaudato.
+
 ## [0.2.7] — 2026-06-23
 ### Aggiunto
 - **Dizionario family-fit multilingue** (~70 lingue ufficiali di Stati sovrani, **3165 termini**) generato con workflow multi-agente, con filtro anti-falsi-positivi (no parole singole troppo generiche).

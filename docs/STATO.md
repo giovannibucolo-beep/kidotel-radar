@@ -2,7 +2,7 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.2.7` (installata su macOS)
+- **Versione:** `0.3.0` (installata su macOS)
 - **Aggiornato:** 2026-06-23
 
 ## Fatto
@@ -24,10 +24,12 @@
 - v0.2.6: **Vista Mappa** (Leaflet/OSM, pin colorati per family-fit) + selettore Tabella↔Mappa; `docs/ARCHITETTURA.md` (struttura solida, valutatore sostituibile); primo componente estratto `MapView`.
 - v0.2.7: **dizionario multilingue** (~70 lingue, 3165 termini) come file dato `src-tauri/src/signals.json` caricato dal motore (`signal_defs()`); filtro anti-falsi-positivi; verificato live (recupero su, città non gonfiate). Script `scripts/build-signals.mjs` rigenera il file dall'output del workflow.
 
-## Prossimo passo strutturale (prima di altre feature)
-- Refactor Rust in moduli `discovery`/`crawl`/`scoring` con interfaccia **`Scorer`** (RuleScorer ora, AiScorer v0.3).
-- Estrarre i componenti frontend (Sidebar, Stats, ResultsTable, ProofPanel, Toolbar).
-- Poi v0.3: **AiScorer via Cowork/MCP** = qualità di valutazione mondiale e multilingua (il vero salto).
+- v0.3.0: **AiScorer via Cowork** (ponte a lotti export/import) — `docs/COWORK-AI-SCORING.md`; comandi `import_ai_scores`/`read_text_file`; dimostrato che l'AI supera le regole (Cavallino 26→62 con citazioni).
+
+## Prossimo passo
+- **v0.4 — connettore MCP live**: server MCP nell'app, Cowork interroga il DB e scrive i voti senza file a mano (non verificabile headless da me → da collaudare insieme).
+- Refactor Rust in moduli `discovery`/`crawl`/`scoring` con interfaccia `Scorer` (oggi: RuleScorer + AiScorer-via-import).
+- Estrarre componenti frontend (Sidebar, Stats, ResultsTable, ProofPanel, Toolbar).
 - **Build 0.2.0 fatta e installata** in `/Applications/Kidotel Radar.app` (firmata ad-hoc, precedente rimossa, app aperta). DMG: `src-tauri/target/release/bundle/dmg/Kidotel Radar_0.2.0_aarch64.dmg`.
 - Script release riutilizzabile: `pnpm release` (o `node scripts/release.mjs [versione]`) — build → firma → installa nuova → cancella vecchia → apri.
 

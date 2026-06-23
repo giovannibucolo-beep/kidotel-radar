@@ -13,6 +13,8 @@ pub fn run() {
             db::export_backup,
             db::import_backup,
             db::write_text_file,
+            db::read_text_file,
+            db::import_ai_scores,
             db::open_report,
         ])
         .run(tauri::generate_context!())
