@@ -2,6 +2,13 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.3.6] — 2026-06-24
+### Migliorato
+- **Dashboard razionalizzata + Heroicons.** Due funzioni nette e separate, entrambe per paese/regione/provincia/città:
+  - 🗄️ **Cerca nel database** — filtra gli hotel già salvati (`list_hotels` con `search`; non scarica nulla).
+  - 📡 **Scansiona (aggiungi)** — scopre hotel nuovi da OSM e li aggiunge.
+  - Sidebar in pannelli titolati con icone Heroicon (database, signal, sparkles, download/upload, check); icone anche su Tabella/Mappa, Stampa, Esporta, footer.
+
 ## [0.3.5] — 2026-06-24
 ### Aggiunto
 - **Località completa per ogni hotel**: città · provincia · regione · paese, in tabella, mappa (popup) e CSV. Riempita OFFLINE dalla posizione con `scripts/backfill-geo.py` (reverse_geocoder + pycountry, nessuna chiamata online). Verificato: La Grotta → Vigo di Fassa · Trento · Trentino-Alto Adige · Italia.
