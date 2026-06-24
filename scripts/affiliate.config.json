@@ -1,0 +1,13 @@
+{
+  "provider": "direct",
+  "base": "https://kidotel.co",
+  "booking": {
+    "aid": "PLACEHOLDER_AID",
+    "baseUrl": "https://www.booking.com/searchresults.html",
+    "labelPattern": "kidotel_{lang}_{regionSlug}_{hotelSlug}",
+    "prefill": { "group_adults": 2, "no_rooms": 1, "age": [8, 5] },
+    "langMap": { "it": "it", "en": "en-gb" }
+  },
+  "direct": { "utm": "utm_source=kidotel&utm_medium=referral&utm_campaign=family" },
+  "lead": { "enabled": false, "endpoint": "" }
+}

@@ -22,9 +22,41 @@ const SIGNALS = JSON.parse(readFileSync(join(import.meta.dirname, "../src-tauri/
 
 const sqlEsc = (s) => (s == null ? "NULL" : "'" + String(s).replace(/'/g, "''") + "'");
 function db(sql) {
-  const r = spawnSync("sqlite3", [DB], { input: sql, encoding: "utf8", maxBuffer: 128 * 1024 * 1024 });
+  // busy_timeout via dot-command (.timeout NON stampa output, a differenza di PRAGMA): lo scorer
+  // e l'harvester scrivono insieme → si aspettano invece di fallire sul lock di SQLite.
+  const r = spawnSync("sqlite3", [DB], { input: ".timeout 60000\n" + sql, encoding: "utf8", maxBuffer: 128 * 1024 * 1024 });
   if (r.status !== 0) throw new Error("sqlite3: " + (r.stderr || "").slice(0, 200));
   return r.stdout;
+}
+
+// Estrae un'email reale dall'HTML grezzo (mailto:/JSON-LD/testo), scarta i falsi positivi.
+function findEmail(html) {
+  const isLocal = (c) => /[A-Za-z0-9._%+\-]/.test(c);
+  const isDomain = (c) => /[A-Za-z0-9.\-]/.test(c);
+  // Allineato a engine.rs find_email (vedi harvest-emails.mjs).
+  const JUNK_SUB = ["example.", "sentry", "wixpress", "@2x", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg",
+    "domain.com", "yourdomain", "googleapis", "gstatic", "schema.org", "w3.org", "@example",
+    "@sentry", "@domain", "@yourdomain"];
+  const JUNK_LOCAL = ["your-email", "youremail", "name", "user", "test", "email", "example",
+    "your", "firstname.lastname", "nome", "tuamail", "tuaemail"];
+  const PREF = ["info@", "reception", "reservation", "booking", "hotel@", "contact", "welcome", "office", "mail@"];
+  const cands = [];
+  for (let i = 0; i < html.length; i++) {
+    if (html[i] !== "@") continue;
+    let l = i; while (l > 0 && isLocal(html[l - 1])) l--;
+    let r = i + 1; while (r < html.length && isDomain(html[r])) r++;
+    if (l === i || r === i + 1) continue;
+    const local = html.slice(l, i);
+    const domain = html.slice(i + 1, r).replace(/\.+$/, "");
+    if (!domain.includes(".") || local.length > 64 || domain.length > 100) continue;
+    const tld = domain.split(".").pop();
+    if (tld.length < 2 || !/^[A-Za-z]+$/.test(tld)) continue;
+    const email = (local + "@" + domain).toLowerCase();
+    if (JUNK_SUB.some((j) => email.includes(j)) || JUNK_LOCAL.includes(local.toLowerCase())) continue;
+    if (!cands.includes(email)) cands.push(email);
+  }
+  cands.sort((a, b) => (PREF.some((p) => a.includes(p)) ? 0 : 1) - (PREF.some((p) => b.includes(p)) ? 0 : 1));
+  return cands[0] || null;
 }
 const countUnscored = () => Number(db("SELECT COUNT(*) FROM hotels WHERE family_fit_score IS NULL AND website IS NOT NULL AND website<>'';").trim()) || 0;
 function nextChunk(n) {
@@ -63,9 +95,11 @@ function familyLinks(html, base) {
 async function scoreHotel(h) {
   const home = await fetchText(h.website);
   const pages = [];
+  let email = null;
   if (home) {
+    email = findEmail(home);
     pages.push([h.website, htmlToText(home)]);
-    for (const l of familyLinks(home, h.website)) { const t = await fetchText(l); if (t) pages.push([l, htmlToText(t)]); }
+    for (const l of familyLinks(home, h.website)) { const t = await fetchText(l); if (t) { if (!email) email = findEmail(t); pages.push([l, htmlToText(t)]); } }
   }
   const websiteOk = pages.length > 0;
   const tagged = [];
@@ -79,15 +113,16 @@ async function scoreHotel(h) {
     if (found) { score += def.weight; breakdown.push({ key: def.key, weight: def.weight, present: true, quote: found[0], url: found[1] }); }
     else breakdown.push({ key: def.key, weight: def.weight, present: false, quote: null, url: null });
   }
-  return { id: h.id, score, breakdown, websiteOk };
+  return { id: h.id, score, breakdown, websiteOk, email };
 }
 
 function write(results) {
   let sql = "BEGIN;\n";
   for (const r of results) {
     const [otype, oid] = r.id.split("/");
+    const emailSet = r.email ? `email=COALESCE(NULLIF(email,''), ${sqlEsc(r.email)}), ` : "";
     sql += `UPDATE hotels SET family_fit_score=${r.score}, score_breakdown=${sqlEsc(JSON.stringify(r.breakdown))}, ` +
-      `enrichment='{"website_ok":${r.websiteOk},"source":"rules"}', updated_at=datetime('now') ` +
+      `enrichment='{"website_ok":${r.websiteOk},"source":"rules"}', ${emailSet}updated_at=datetime('now') ` +
       `WHERE osm_type=${sqlEsc(otype)} AND osm_id=${Number(oid) || 0};\n`;
   }
   sql += "COMMIT;\n";

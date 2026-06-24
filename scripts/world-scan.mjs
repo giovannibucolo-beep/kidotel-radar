@@ -38,13 +38,53 @@ const PLACES = [
   "San Diego", "Maui Hawaii", "Costa Rica Guanacaste", "Bariloche", "Rio de Janeiro",
   // Oceania
   "Gold Coast", "Cairns", "Queenstown Nuova Zelanda", "Fiji", "Sydney",
+
+  // === Espansione 2026-06-24 (nuove zone family) ===
+  // Europa — Italia
+  "Veneto", "Lombardia", "Liguria", "Puglia", "Calabria", "Marche",
+  "Lago di Garda", "Lago di Como", "Lago Maggiore", "Versilia",
+  // Europa — Alpi e Centro
+  "Carinzia Austria", "Vorarlberg", "Stiria Austria", "Foresta Nera Germania",
+  "Mar Baltico Germania", "Engadina Svizzera", "Interlaken", "Zermatt",
+  // Europa — Spagna/Portogallo
+  "Costa del Sol", "Costa Blanca", "Ibiza", "Lanzarote", "Fuerteventura",
+  "Gran Canaria", "Madeira", "Lisbona",
+  // Europa — Francia
+  "Bretagna", "Normandia", "Provenza", "Vandea",
+  // Europa — Balcani/Grecia/Mediterraneo
+  "Spalato", "Dubrovnik", "Montenegro costa", "Bled Slovenia",
+  "Santorini", "Halkidiki", "Cipro", "Malta",
+  // Nord Europa
+  "Lapponia finlandese", "Lofoten Norvegia", "Islanda sud", "Copenaghen",
+  // Asia / Medio Oriente
+  "Hokkaido", "Kyoto", "Osaka", "Hua Hin", "Langkawi", "Penang", "Singapore",
+  "Palawan", "Da Nang Vietnam", "Phu Quoc", "Kerala", "Antalya", "Bodrum",
+  "Cappadocia", "Aqaba Giordania", "Abu Dhabi", "Ras al Khaimah", "Mascate Oman",
+  // Africa
+  "Marsa Alam", "El Gouna", "Hammamet Tunisia", "Essaouira",
+  "Diani Beach", "Garden Route Sudafrica",
+  // Americhe
+  "Anaheim California", "Las Vegas", "Tampa Florida", "Cabo San Lucas",
+  "Puerto Vallarta", "Tulum", "Montego Bay Giamaica", "Aruba",
+  "Nassau Bahamas", "Barbados", "Cartagena Colombia", "Cusco",
+  "Buenos Aires", "Florianópolis", "Gramado Brasile", "Vancouver", "Whistler", "Banff",
+  // Oceania
+  "Sunshine Coast", "Perth", "Auckland", "Rotorua", "Bora Bora",
+
+  // === USA per stato + Canada per provincia (i paesi enormi si scansionano per area) ===
+  "California", "Florida", "Texas", "New York State", "Colorado", "Arizona", "Utah",
+  "Nevada", "Hawaii", "North Carolina", "Tennessee", "Georgia USA", "Washington State",
+  "Oregon", "Illinois", "Wisconsin", "Michigan", "Massachusetts", "South Carolina", "Virginia",
+  "Ontario", "Quebec", "British Columbia", "Alberta",
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const sqlEsc = (s) => (s == null || s === "" ? "NULL" : "'" + String(s).replace(/'/g, "''") + "'");
 
 function dbExec(sql) {
-  const r = spawnSync("sqlite3", [DB], { input: sql, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  // .timeout: attende sul lock invece di fallire, così convive con scorer/harvester (dot-command,
+  // nessun output extra — al contrario di PRAGMA busy_timeout che stamperebbe il valore).
+  const r = spawnSync("sqlite3", [DB], { input: ".timeout 60000\n" + sql, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
   if (r.status !== 0) throw new Error("sqlite3: " + (r.stderr || "").slice(0, 200));
   return r.stdout.trim();
 }
@@ -139,4 +179,14 @@ for (let i = 0; i < todo.length; i++) {
   await sleep(1300); // gentile con Nominatim/Overpass
 }
 
-console.log(`\nFatto questo giro. DB: ${dbCount()} hotel. Rilancia per incrementare o aggiungi zone in PLACES.`);
+console.log(`\nFatto questo giro. DB: ${dbCount()} hotel.`);
+
+// Geo-backfill AUTOMATICO dei nuovi hotel (paese/regione/città dalle coordinate, offline): così
+// non restano mai come "(sconosciuto)" in Copertura. Richiede python3 + reverse_geocoder/pycountry.
+console.log("Geolocalizzo i nuovi hotel (paese/regione/città)…");
+const bf = spawnSync("python3", [resolve(import.meta.dirname, "backfill-geo.py"), "--new"],
+  { stdio: "inherit", env: process.env });
+if (bf.status !== 0) {
+  console.log("⚠ backfill non riuscito (python3/reverse_geocoder mancante?). Lancia a mano: python3 scripts/backfill-geo.py --new");
+}
+console.log("Rilancia per incrementare o aggiungi zone in PLACES.");

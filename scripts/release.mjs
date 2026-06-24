@@ -18,6 +18,18 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PRODUCT = "Kidotel Radar";
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { stdio: "inherit", cwd: ROOT, ...opts });
 
+// bundle_dmg.sh fallisce se restano immagini DMG montate orfane (/Volumes/dmg.*) da build
+// precedenti interrotte. Le stacchiamo PRIMA di buildare. (Vedi memo "Tauri: dmg e mount orfani".)
+function detachOrphanDmgMounts() {
+  let out = "";
+  try { out = execFileSync("bash", ["-lc", "ls -d /Volumes/dmg.* 2>/dev/null || true"], { encoding: "utf8" }); }
+  catch { /* nessun mount */ }
+  for (const vol of out.split("\n").map((s) => s.trim()).filter(Boolean)) {
+    try { execFileSync("hdiutil", ["detach", vol, "-force"], { stdio: "inherit" }); console.log(`smontata immagine orfana: ${vol}`); }
+    catch { /* già smontata */ }
+  }
+}
+
 function setVersion(v) {
   if (!/^\d+\.\d+\.\d+$/.test(v)) throw new Error(`Versione non valida: ${v}`);
   const edits = [
@@ -44,7 +56,17 @@ if (arg) setVersion(arg);
 const version = currentVersion();
 console.log(`\n=== Release ${PRODUCT} v${version} ===\n`);
 
-run("pnpm", ["tauri", "build"]);
+// bundle_dmg.sh (hdiutil) ogni tanto fallisce e LASCIA un'immagine montata orfana, facendo fallire
+// anche il tentativo successivo finché non la si stacca. Quindi: stacca → build; se fallisce, stacca
+// di nuovo (anche l'orfana appena creata) e riprova UNA volta.
+detachOrphanDmgMounts();
+try {
+  run("pnpm", ["tauri", "build"]);
+} catch {
+  console.log("\nbuild fallita (probabile immagine DMG orfana): stacco e riprovo una volta…\n");
+  detachOrphanDmgMounts();
+  run("pnpm", ["tauri", "build"]);
+}
 
 const appPath = join(ROOT, "src-tauri/target/release/bundle/macos", `${PRODUCT}.app`);
 const dmgDir = join(ROOT, "src-tauri/target/release/bundle/dmg");
@@ -68,11 +90,12 @@ try {
 try { run("xattr", ["-dr", "com.apple.quarantine", dest]); } catch { /* ignore */ }
 console.log(`installata: ${dest}`);
 
-// cancella i .dmg di versioni precedenti, tieni solo quello corrente
+// cancella i .dmg di versioni precedenti, tieni solo quello corrente.
+// L'architettura nel nome del dmg dipende dalla macchina (aarch64 su Apple Silicon, x86_64 su
+// Intel): NON la inchiodiamo, teniamo qualunque dmg che contenga la versione corrente.
 if (existsSync(dmgDir)) {
-  const keep = `${PRODUCT}_${version}_aarch64.dmg`;
   for (const f of readdirSync(dmgDir)) {
-    if (f.endsWith(".dmg") && f !== keep) {
+    if (f.endsWith(".dmg") && !f.includes(`_${version}_`)) {
       unlinkSync(join(dmgDir, f));
       console.log(`rimosso vecchio dmg: ${f}`);
     }

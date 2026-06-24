@@ -1,0 +1,40 @@
+# Build dell'installer WINDOWS (e macOS) via GitHub Actions. Nessun dato sensibile: il repo contiene
+# SOLO il codice (il database vive in Application Support ed è escluso da .gitignore).
+# Si attiva su un tag "vX.Y.Z" (es. git tag v0.8.18 && git push --tags) o a mano (workflow_dispatch).
+# Produce gli installer e li allega a una RELEASE in bozza, da cui scaricare l'.exe per Windows.
+name: build
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+          - platform: macos-latest
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install frontend deps
+        run: pnpm install
+      - name: Build the app (Tauri)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Kidotel Radar ${{ github.ref_name }}"
+          releaseDraft: true
+          releaseBody: "Installer generati automaticamente. Scarica l'.exe (Windows) o il .dmg (macOS)."

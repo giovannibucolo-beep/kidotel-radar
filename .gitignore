@@ -12,6 +12,15 @@ dist
 dist-ssr
 *.local
 
+# build Rust/Tauri (enorme, non versionare)
+src-tauri/target
+
+# dati sensibili: il database e i backup NON vanno mai nel repo (stanno in Application Support)
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*-backup.sqlite
+
 # stato job di scansione mondiale (locale, non versionare)
 scripts/.world-scan-done.json
 

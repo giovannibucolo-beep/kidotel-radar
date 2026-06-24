@@ -23,7 +23,7 @@ def main():
     db = os.environ.get("KIDOTEL_DB", os.path.expanduser(
         "~/Library/Application Support/co.kidotel.radar/kidotel-radar.sqlite"))
     only_new = "--new" in sys.argv
-    con = sqlite3.connect(db)
+    con = sqlite3.connect(db, timeout=60)  # attende sul lock: convive con scorer/harvest
     cur = con.cursor()
     for col in ("region", "province"):
         try:
@@ -32,7 +32,10 @@ def main():
             pass
     con.commit()
 
-    where = "WHERE region IS NULL" if only_new else ""
+    # --new copre TUTTE le righe sotto-geocodificate: regione mancante OPPURE paese mancante/vuoto
+    # (prima prendeva solo region IS NULL → le righe con regione ma senza paese restavano
+    # "(sconosciuto)" e si accumulavano).
+    where = "WHERE region IS NULL OR country IS NULL OR country=''" if only_new else ""
     rows = cur.execute(
         f"SELECT osm_type, osm_id, lat, lon, city FROM hotels {where}").fetchall()
     valid = [r for r in rows if r[2] and r[3] and not (r[2] == 0 and r[3] == 0)]
