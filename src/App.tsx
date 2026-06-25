@@ -172,42 +172,126 @@ function priceTierOf(h: Hotel): { tier: number; isReal: boolean; eur: number | n
   return { tier, isReal: false, eur: null, src: null };
 }
 
-// Continente per paese (nomi come da pycountry, quelli salvati nel DB). Per raggruppare la Copertura.
-const CONTINENT: Record<string, string> = {
-  // Europa
-  Austria: "europe", Belgium: "europe", Croatia: "europe", Cyprus: "europe", Czechia: "europe",
-  Denmark: "europe", Estonia: "europe", Finland: "europe", France: "europe", Germany: "europe",
-  Gibraltar: "europe", Greece: "europe", "Holy See (Vatican City State)": "europe", Hungary: "europe",
-  Iceland: "europe", Ireland: "europe", Italy: "europe", Latvia: "europe", Liechtenstein: "europe",
-  Lithuania: "europe", Luxembourg: "europe", Malta: "europe", Monaco: "europe", Montenegro: "europe",
-  Netherlands: "europe", "North Macedonia": "europe", Norway: "europe", Poland: "europe", Portugal: "europe",
-  Romania: "europe", "Russian Federation": "europe", "San Marino": "europe", Serbia: "europe",
-  Slovakia: "europe", Slovenia: "europe", Spain: "europe", Sweden: "europe", Switzerland: "europe",
-  "Türkiye": "europe", Turkey: "europe", Ukraine: "europe", "United Kingdom": "europe", Bulgaria: "europe", Albania: "europe",
-  // Asia
-  China: "asia", India: "asia", Indonesia: "asia", Israel: "asia", Japan: "asia", Jordan: "asia",
-  Kazakhstan: "asia", Malaysia: "asia", Maldives: "asia", Oman: "asia", Philippines: "asia",
-  Qatar: "asia", "Saudi Arabia": "asia", Singapore: "asia", "Sri Lanka": "asia", Thailand: "asia",
-  "United Arab Emirates": "asia", Uzbekistan: "asia", "Viet Nam": "asia", Vietnam: "asia", Cambodia: "asia",
-  "Korea, Republic of": "asia", Nepal: "asia", Lebanon: "asia", Bahrain: "asia",
-  // Africa
-  Egypt: "africa", Kenya: "africa", Mauritius: "africa", Morocco: "africa", "Réunion": "africa",
-  Seychelles: "africa", "South Africa": "africa", "Tanzania, United Republic of": "africa",
-  Tunisia: "africa", Namibia: "africa", Botswana: "africa", Nigeria: "africa", Ghana: "africa", Senegal: "africa",
-  // Nord America (incl. Caraibi e America Centrale)
-  Aruba: "north_america", Bahamas: "north_america", Barbados: "north_america", Belize: "north_america",
-  Canada: "north_america", "Costa Rica": "north_america", Cuba: "north_america", "Dominican Republic": "north_america",
-  Guadeloupe: "north_america", Guatemala: "north_america", Haiti: "north_america", Honduras: "north_america",
-  Jamaica: "north_america", Martinique: "north_america", Mexico: "north_america", Nicaragua: "north_america",
-  Panama: "north_america", "Puerto Rico": "north_america", "United States": "north_america", "El Salvador": "north_america",
-  // Sud America
-  Argentina: "south_america", "Bolivia, Plurinational State of": "south_america", Brazil: "south_america",
-  Chile: "south_america", Colombia: "south_america", Ecuador: "south_america", "French Guiana": "south_america",
-  Paraguay: "south_america", Peru: "south_america", Uruguay: "south_america", "Venezuela, Bolivarian Republic of": "south_america",
-  // Oceania
-  Australia: "oceania", Fiji: "oceania", "French Polynesia": "oceania", "New Zealand": "oceania",
+// Lista CANONICA dei paesi del mondo (nome + continente, ordinati per continente poi alfabetico).
+// Guida: (a) il selettore «aggiungi paese» con ricerca, (b) la scansione «Completa tutti» che ora
+// copre OGNI paese — non solo quelli già in archivio — con un cursore di ripresa. I nomi sono quelli
+// salvati nel DB (pycountry) dove già presenti, così la copertura non si sdoppia; `q` è la query
+// Nominatim quando il nome pycountry non si geocodifica bene (es. «Russian Federation» → «Russia»).
+type WorldCountry = { n: string; c: string; q?: string };
+const WORLD_COUNTRIES: WorldCountry[] = [
+  // EUROPA
+  { n: "Albania", c: "europe" }, { n: "Andorra", c: "europe" }, { n: "Austria", c: "europe" },
+  { n: "Belarus", c: "europe" }, { n: "Belgium", c: "europe" }, { n: "Bosnia and Herzegovina", c: "europe" },
+  { n: "Bulgaria", c: "europe" }, { n: "Croatia", c: "europe" }, { n: "Cyprus", c: "europe" },
+  { n: "Czechia", c: "europe" }, { n: "Denmark", c: "europe" }, { n: "Estonia", c: "europe" },
+  { n: "Finland", c: "europe" }, { n: "France", c: "europe" }, { n: "Germany", c: "europe" },
+  { n: "Gibraltar", c: "europe" }, { n: "Greece", c: "europe" },
+  { n: "Holy See (Vatican City State)", c: "europe", q: "Vatican City" }, { n: "Hungary", c: "europe" },
+  { n: "Iceland", c: "europe" }, { n: "Ireland", c: "europe" }, { n: "Italy", c: "europe" },
+  { n: "Kosovo", c: "europe" }, { n: "Latvia", c: "europe" }, { n: "Liechtenstein", c: "europe" },
+  { n: "Lithuania", c: "europe" }, { n: "Luxembourg", c: "europe" }, { n: "Malta", c: "europe" },
+  { n: "Moldova", c: "europe" }, { n: "Monaco", c: "europe" }, { n: "Montenegro", c: "europe" },
+  { n: "Netherlands", c: "europe" }, { n: "North Macedonia", c: "europe" }, { n: "Norway", c: "europe" },
+  { n: "Poland", c: "europe" }, { n: "Portugal", c: "europe" }, { n: "Romania", c: "europe" },
+  { n: "Russian Federation", c: "europe", q: "Russia" }, { n: "San Marino", c: "europe" },
+  { n: "Serbia", c: "europe" }, { n: "Slovakia", c: "europe" }, { n: "Slovenia", c: "europe" },
+  { n: "Spain", c: "europe" }, { n: "Sweden", c: "europe" }, { n: "Switzerland", c: "europe" },
+  { n: "Türkiye", c: "europe", q: "Turkey" }, { n: "Ukraine", c: "europe" }, { n: "United Kingdom", c: "europe" },
+  // ASIA
+  { n: "Afghanistan", c: "asia" }, { n: "Armenia", c: "asia" }, { n: "Azerbaijan", c: "asia" },
+  { n: "Bahrain", c: "asia" }, { n: "Bangladesh", c: "asia" }, { n: "Bhutan", c: "asia" },
+  { n: "Brunei Darussalam", c: "asia", q: "Brunei" }, { n: "Cambodia", c: "asia" }, { n: "China", c: "asia" },
+  { n: "Georgia", c: "asia" }, { n: "India", c: "asia" }, { n: "Indonesia", c: "asia" },
+  { n: "Iran", c: "asia" }, { n: "Iraq", c: "asia" }, { n: "Israel", c: "asia" }, { n: "Japan", c: "asia" },
+  { n: "Jordan", c: "asia" }, { n: "Kazakhstan", c: "asia" }, { n: "Korea, Republic of", c: "asia", q: "South Korea" },
+  { n: "Kuwait", c: "asia" }, { n: "Kyrgyzstan", c: "asia" },
+  { n: "Lao People's Democratic Republic", c: "asia", q: "Laos" }, { n: "Lebanon", c: "asia" },
+  { n: "Malaysia", c: "asia" }, { n: "Maldives", c: "asia" }, { n: "Mongolia", c: "asia" },
+  { n: "Myanmar", c: "asia" }, { n: "Nepal", c: "asia" }, { n: "Oman", c: "asia" }, { n: "Pakistan", c: "asia" },
+  { n: "Palestine, State of", c: "asia", q: "Palestine" }, { n: "Philippines", c: "asia" }, { n: "Qatar", c: "asia" },
+  { n: "Saudi Arabia", c: "asia" }, { n: "Singapore", c: "asia" }, { n: "Sri Lanka", c: "asia" },
+  { n: "Tajikistan", c: "asia" }, { n: "Thailand", c: "asia" }, { n: "Timor-Leste", c: "asia" },
+  { n: "Turkmenistan", c: "asia" }, { n: "United Arab Emirates", c: "asia" }, { n: "Uzbekistan", c: "asia" },
+  { n: "Viet Nam", c: "asia", q: "Vietnam" },
+  // AFRICA
+  { n: "Algeria", c: "africa" }, { n: "Angola", c: "africa" }, { n: "Benin", c: "africa" },
+  { n: "Botswana", c: "africa" }, { n: "Burkina Faso", c: "africa" }, { n: "Burundi", c: "africa" },
+  { n: "Cabo Verde", c: "africa", q: "Cape Verde" }, { n: "Cameroon", c: "africa" },
+  { n: "Comoros", c: "africa" }, { n: "Côte d'Ivoire", c: "africa", q: "Ivory Coast" },
+  { n: "Democratic Republic of the Congo", c: "africa" }, { n: "Djibouti", c: "africa" },
+  { n: "Egypt", c: "africa" }, { n: "Eswatini", c: "africa" }, { n: "Ethiopia", c: "africa" },
+  { n: "Gabon", c: "africa" }, { n: "Gambia", c: "africa" }, { n: "Ghana", c: "africa" },
+  { n: "Guinea", c: "africa" }, { n: "Kenya", c: "africa" }, { n: "Lesotho", c: "africa" },
+  { n: "Liberia", c: "africa" }, { n: "Libya", c: "africa" }, { n: "Madagascar", c: "africa" },
+  { n: "Malawi", c: "africa" }, { n: "Mali", c: "africa" }, { n: "Mauritania", c: "africa" },
+  { n: "Mauritius", c: "africa" }, { n: "Morocco", c: "africa" }, { n: "Mozambique", c: "africa" },
+  { n: "Namibia", c: "africa" }, { n: "Niger", c: "africa" }, { n: "Nigeria", c: "africa" },
+  { n: "Republic of the Congo", c: "africa" }, { n: "Réunion", c: "africa" }, { n: "Rwanda", c: "africa" },
+  { n: "Senegal", c: "africa" }, { n: "Seychelles", c: "africa" }, { n: "Sierra Leone", c: "africa" },
+  { n: "Somalia", c: "africa" }, { n: "South Africa", c: "africa" }, { n: "Sudan", c: "africa" },
+  { n: "Tanzania, United Republic of", c: "africa", q: "Tanzania" }, { n: "Togo", c: "africa" },
+  { n: "Tunisia", c: "africa" }, { n: "Uganda", c: "africa" }, { n: "Zambia", c: "africa" },
+  { n: "Zimbabwe", c: "africa" },
+  // NORD AMERICA (incl. Caraibi e America Centrale)
+  { n: "Antigua and Barbuda", c: "north_america" }, { n: "Aruba", c: "north_america" },
+  { n: "Bahamas", c: "north_america" }, { n: "Barbados", c: "north_america" }, { n: "Belize", c: "north_america" },
+  { n: "Canada", c: "north_america" }, { n: "Costa Rica", c: "north_america" }, { n: "Cuba", c: "north_america" },
+  { n: "Curaçao", c: "north_america", q: "Curacao" }, { n: "Dominica", c: "north_america" },
+  { n: "Dominican Republic", c: "north_america" }, { n: "El Salvador", c: "north_america" },
+  { n: "Greenland", c: "north_america" }, { n: "Grenada", c: "north_america" }, { n: "Guadeloupe", c: "north_america" },
+  { n: "Guatemala", c: "north_america" }, { n: "Haiti", c: "north_america" }, { n: "Honduras", c: "north_america" },
+  { n: "Jamaica", c: "north_america" }, { n: "Martinique", c: "north_america" }, { n: "Mexico", c: "north_america" },
+  { n: "Nicaragua", c: "north_america" }, { n: "Panama", c: "north_america" }, { n: "Puerto Rico", c: "north_america" },
+  { n: "Saint Kitts and Nevis", c: "north_america" }, { n: "Saint Lucia", c: "north_america" },
+  { n: "Saint Vincent and the Grenadines", c: "north_america" }, { n: "Trinidad and Tobago", c: "north_america" },
+  { n: "United States", c: "north_america" },
+  // SUD AMERICA
+  { n: "Argentina", c: "south_america" }, { n: "Bolivia, Plurinational State of", c: "south_america", q: "Bolivia" },
+  { n: "Brazil", c: "south_america" }, { n: "Chile", c: "south_america" }, { n: "Colombia", c: "south_america" },
+  { n: "Ecuador", c: "south_america" }, { n: "French Guiana", c: "south_america" }, { n: "Guyana", c: "south_america" },
+  { n: "Paraguay", c: "south_america" }, { n: "Peru", c: "south_america" }, { n: "Suriname", c: "south_america" },
+  { n: "Uruguay", c: "south_america" }, { n: "Venezuela, Bolivarian Republic of", c: "south_america", q: "Venezuela" },
+  // OCEANIA
+  { n: "Australia", c: "oceania" }, { n: "Fiji", c: "oceania" }, { n: "French Polynesia", c: "oceania" },
+  { n: "Kiribati", c: "oceania" }, { n: "New Caledonia", c: "oceania" }, { n: "New Zealand", c: "oceania" },
+  { n: "Palau", c: "oceania" }, { n: "Papua New Guinea", c: "oceania" }, { n: "Samoa", c: "oceania" },
+  { n: "Solomon Islands", c: "oceania" }, { n: "Tonga", c: "oceania" }, { n: "Vanuatu", c: "oceania" },
+];
+// Alias di nomi alternativi che potrebbero essere salvati nel DB (vecchie scansioni) → continente,
+// così la copertura li raggruppa lo stesso invece di buttarli in «(altro)».
+const CONTINENT_ALIASES: Record<string, string> = {
+  Turkey: "europe", Russia: "europe", Vietnam: "asia", "South Korea": "asia", Laos: "asia",
+  Brunei: "asia", Palestine: "asia", Bolivia: "south_america", Venezuela: "south_america",
+  Tanzania: "africa", "Ivory Coast": "africa", "Cape Verde": "africa", "Vatican City": "europe",
+  Curacao: "north_america",
 };
+// Continente per paese — derivato dalla lista canonica + alias. Per raggruppare la Copertura.
+const CONTINENT: Record<string, string> = {
+  ...Object.fromEntries(WORLD_COUNTRIES.map((c) => [c.n, c.c])),
+  ...CONTINENT_ALIASES,
+};
+// Query Nominatim per i paesi col nome pycountry «difficile» (resto: il nome stesso).
+const NOMINATIM_Q: Record<string, string> = Object.fromEntries(
+  WORLD_COUNTRIES.filter((c) => c.q).map((c) => [c.n, c.q as string]),
+);
+const nominatimQuery = (country: string) => NOMINATIM_Q[country] ?? country;
 const CONTINENT_ORDER = ["europe", "asia", "africa", "north_america", "south_america", "oceania", "other"];
+
+// Ordine di scansione di «Completa tutti»: tutti i paesi del mondo, nell'ordine della lista canonica.
+const ALL_COUNTRIES = WORLD_COUNTRIES.map((c) => c.n);
+// CURSORE DI RIPRESA: nome dell'ultimo paese COMPLETATO da «Completa tutti». Alla ripresa si parte dal
+// paese SUCCESSIVO, non da capo — così, lanciando più volte la scansione, si copre via via tutto il
+// mondo invece di ricominciare sempre dall'Europa. Persistito in localStorage (sopravvive al riavvio).
+const SCAN_CURSOR_KEY = "kidotel.scanCursor";
+function loadScanCursor(): string { try { return localStorage.getItem(SCAN_CURSOR_KEY) || ""; } catch { return ""; } }
+function saveScanCursor(name: string) { try { localStorage.setItem(SCAN_CURSOR_KEY, name); } catch { /* */ } }
+// Indice da cui ripartire dato il cursore (paese DOPO l'ultimo completato; se finito/assente → 0).
+function resumeIndex(cursor: string): number {
+  if (!cursor) return 0;
+  const idx = ALL_COUNTRIES.indexOf(cursor);
+  if (idx < 0) return 0;
+  return idx + 1 >= ALL_COUNTRIES.length ? 0 : idx + 1;
+}
 
 // Etichette segnali in INGLESE per l'email di outreach (sempre in inglese, a prescindere dalla lingua UI).
 const EN_SIGNAL: Record<string, string> = {
@@ -300,6 +384,7 @@ export default function App() {
   const [osmTotals, setOsmTotals] = useState<Record<string, number>>({});
   const [covBusy, setCovBusy] = useState<string | null>(null);
   const [starsBusy, setStarsBusy] = useState(false);
+  const [scanCursor, setScanCursor] = useState(loadScanCursor()); // ripresa di «Completa tutti»
   const [contacts, setContacts] = useState<Record<string, ContactState>>({});
   const [reviewCounts, setReviewCounts] = useState<Record<string, number>>({});
   const [crmFilter, setCrmFilter] = useState<ContactStatus | "all">("all");
@@ -470,12 +555,18 @@ export default function App() {
   // Porta un paese verso il 100%: enumera le sue regioni e le scansiona una per una (funziona anche
   // per i paesi enormi/antimeridiano, che per bbox sarebbero bloccati). Mostra l'avanzamento.
   function stopComplete() { covStopRef.current = true; }
+  // Azzera il cursore di ripresa: la prossima «Completa tutti» riparte dal primo paese del mondo.
+  function resetScanCursor() { saveScanCursor(""); setScanCursor(""); }
+  // #2 — scansiona un paese SCELTO dal selettore (anche uno non ancora in archivio): porta a 100%.
+  function pickCountry(country: string) { if (country) void completeCountry(country); }
 
   // Core riusabile (no guard, no covBusy): scansiona un paese regione per regione. Ritorna i NUOVI.
   // `prefix` (es. "Europa 2/5 · ") antepone il contesto continente alle note durante lo scan continente.
   async function runCompleteCountry(country: string, prefix = "", force = false): Promise<number> {
     setNotice(`${prefix}${country}: ${t("cov.enumerating")}…`);
-    const regions = await invoke<SubArea[]>("list_subareas", { query: country });
+    // Nominatim: usa l'alias di query quando il nome pycountry non si geocodifica bene; il paese
+    // TIMBRATO sugli hotel resta però il nome canonico (così la copertura raggruppa con il resto).
+    const regions = await invoke<SubArea[]>("list_subareas", { query: nominatimQuery(country) });
     if (!regions.length) { setNotice(`${prefix}${country}: ${t("cov.noregions")}`); return 0; }
     // INCREMENTALE: salta le regioni già scansionate negli ultimi 30 giorni (niente da capo ogni volta).
     const keys = regions.map((r) => `${r.osm_type}/${r.osm_id}`);
@@ -495,7 +586,7 @@ export default function App() {
       if (covStopRef.current) break;
       await new Promise((r) => setTimeout(r, 600)); // garbo verso Overpass + punto di stop
     }
-    try { const osm = await invoke<number>("osm_hotel_count", { query: country }); setOsmTotals((p) => ({ ...p, [country]: osm })); } catch { /* grado opzionale */ }
+    try { const osm = await invoke<number>("osm_hotel_count", { query: nominatimQuery(country) }); setOsmTotals((p) => ({ ...p, [country]: osm })); } catch { /* grado opzionale */ }
     return latest - before;
   }
 
@@ -539,26 +630,28 @@ export default function App() {
     }
   }
 
-  // Scan di TUTTI i continenti, uno dopo l'altro (paese per paese). Grazie all'incrementale, i paesi
-  // già scansionati di recente vengono saltati → la ripresa è rapida.
+  // Scan di TUTTI i paesi del mondo, uno dopo l'altro. RIPRENDE dal punto in cui si era fermato (cursore)
+  // invece di ricominciare dall'inizio, così a furia di lanciarlo si copre tutto il mondo. L'incrementale
+  // (regioni già fatte <30gg) rende comunque rapidi i paesi già scansionati di recente.
   async function completeAllContinents() {
     if (covBusy || loading) return;
     covStopRef.current = false;
     setCovBusy("cont:all");
     setError(null);
+    const start = resumeIndex(loadScanCursor());
     try {
       let total = 0;
-      for (const k of CONTINENT_ORDER) {
+      let i = start;
+      for (; i < ALL_COUNTRIES.length; i++) {
         if (covStopRef.current) break;
-        const list = coverage
-          .filter((c) => !c.country.startsWith("(") && (CONTINENT[c.country] || "other") === k)
-          .map((c) => c.country)
-          .sort((a, b) => a.localeCompare(b, lang));
-        for (let i = 0; i < list.length; i++) {
-          if (covStopRef.current) break;
-          total += await runCompleteCountry(list[i], `${t(("cont." + k) as TKey)} ${i + 1}/${list.length} · `);
-        }
+        const country = ALL_COUNTRIES[i];
+        const k = CONTINENT[country] || "other";
+        total += await runCompleteCountry(country, `${t(("cont." + k) as TKey)} · ${i + 1}/${ALL_COUNTRIES.length} · `);
+        saveScanCursor(country); // avanza il cursore SOLO dopo aver completato il paese
       }
+      // se siamo arrivati in fondo senza fermarci → giro del mondo finito: la prossima volta riparte da capo.
+      if (!covStopRef.current && i >= ALL_COUNTRIES.length) saveScanCursor("");
+      setScanCursor(loadScanCursor());
       setNotice(`${t("coverage.completeAll")}: +${total.toLocaleString(lang)} ${t("cov.new")}${covStopRef.current ? ` (${t("cov.stopped")})` : ""}.`);
     } catch (e) {
       setError(String(e));
@@ -1467,6 +1560,7 @@ kidotel.co`;
               onGrade={gradeCountry} onComplete={completeCountry} onCompleteContinent={completeContinent}
               onCompleteAll={completeAllContinents} onBackfillStars={backfillStars} starsBusy={starsBusy}
               onStop={stopComplete} busy={covBusy} loading={loading}
+              scanCursor={scanCursor} onResetCursor={resetScanCursor} onPickCountry={pickCountry}
             />
           ) : viewMode === "crm" ? (
             <CrmView
@@ -1819,6 +1913,7 @@ type CoverageRow = { country: string; total: number; scored: number; strong: num
 function CoverageView({
   coverage, osmTotals, t, lang, threshold, query, setQuery, onScan, scanning,
   onGrade, onComplete, onCompleteContinent, onCompleteAll, onBackfillStars, starsBusy, onStop, busy, loading,
+  scanCursor, onResetCursor, onPickCountry,
 }: {
   coverage: CoverageRow[];
   osmTotals: Record<string, number>;
@@ -1838,8 +1933,14 @@ function CoverageView({
   onStop: () => void;
   busy: string | null;
   loading: boolean;
+  scanCursor: string;
+  onResetCursor: () => void;
+  onPickCountry: (country: string) => void;
 }) {
   const anyBusy = busy !== null || starsBusy || loading || scanning;
+  const [pick, setPick] = useState(""); // paese scelto nel selettore «aggiungi paese»
+  // paese di ripresa per «Completa tutti»: il successivo a quello completato per ultimo.
+  const resumeCountry = scanCursor ? (ALL_COUNTRIES[resumeIndex(scanCursor)] ?? ALL_COUNTRIES[0]) : ALL_COUNTRIES[0];
   // Pannello "Scansiona" (scoperta nuovi hotel da OSM): vive in Copertura per analogia con Misura/Completa.
   const scanPanel = (
     <div className="cov-scanbox">
@@ -1857,7 +1958,23 @@ function CoverageView({
         </button>
       </div>
       <div className="hint">{t("scan.hint")}</div>
-      {/* azioni globali: completa TUTTI i continenti (incrementale) + ri-scansione stelle da OSM */}
+      {/* #2 — aggiungi/scansiona un PAESE scelto da una lista con ricerca (anche non ancora in archivio). */}
+      <div className="cov-scanbox-row cov-pick">
+        <input
+          className="search"
+          list="kidotel-countries"
+          value={pick}
+          onChange={(e) => setPick(e.currentTarget.value)}
+          placeholder={t("scan.pickCountry")}
+        />
+        <datalist id="kidotel-countries">
+          {ALL_COUNTRIES.map((c) => <option key={c} value={c} />)}
+        </datalist>
+        <button className="scan-btn" disabled={anyBusy || !ALL_COUNTRIES.includes(pick)} onClick={() => onPickCountry(pick)}>
+          <Icon name="pin" /> {t("scan.addCountry")}
+        </button>
+      </div>
+      {/* azioni globali: completa TUTTI i paesi del mondo (ripresa dal cursore) + ri-scansione stelle da OSM */}
       <div className="cov-global">
         {busy === "cont:all" || (starsBusy) ? (
           <button className="cov-cont-btn stop" onClick={onStop}><Icon name="stop" size={13} /> {t("coverage.stop")}</button>
@@ -1868,6 +1985,13 @@ function CoverageView({
           </>
         )}
       </div>
+      {/* #3 — ripresa: mostra da quale paese ricomincerà «Completa tutti», con reset «da capo». */}
+      {scanCursor ? (
+        <div className="hint cov-resume">
+          {t("coverage.resumeFrom")}: <b>{resumeCountry}</b>
+          <button className="link-btn" disabled={anyBusy} onClick={onResetCursor}>{t("coverage.restart")}</button>
+        </div>
+      ) : null}
     </div>
   );
   if (coverage.length === 0) {

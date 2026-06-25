@@ -145,6 +145,9 @@ body { margin: 0; background: var(--bg); }
 .cov-scanbox-row .search { flex: 1; }
 .cov-scanbox-row .scan-btn { width: auto; padding: 0 18px; }
 .cov-global { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.cov-pick { margin-top: 8px; }
+.cov-resume { margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cov-resume .link-btn { font-size: 12px; }
 
 .sidebar {
   background: var(--surface);

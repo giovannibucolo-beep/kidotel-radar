@@ -2,8 +2,15 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.21` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.22` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-25
+
+## Fatto v0.8.22 (2026-06-25) — aggiungi paesi (mondo) + scansione a ripresa
+- **WORLD_COUNTRIES** (~190 paesi, nome+continente, alias query Nominatim): selettore «Aggiungi e scansiona» con ricerca in Copertura → scansiona QUALSIASI paese, anche nuovo. CONTINENT derivato dalla lista + alias (no più «(altro)»). `nominatimQuery()` per i nomi pycountry difficili; il timbro resta canonico.
+- **«Completa tutti» = mondo intero + RIPRESA**: itera ALL_COUNTRIES (non più solo `coverage`) e usa un cursore `kidotel.scanCursor` (localStorage, per nome): riparte dal paese DOPO l'ultimo completato; UI «riprende da: <paese>» + «ricomincia da capo». Niente più restart dall'Europa.
+- .exe Windows: confermato che parte ad OGNI dmg (release.mjs da 0.8.20).
+- Verificato (anteprima IT/EN/RU): 193 voci nel selettore, resume corretto (Germany→Gibraltar, Italy→Kosovo), reset ok, 0 errori; Guida+NEWS trilingui. tsc pulito.
+- **Prossimo (#4)**: manuale in-app con SCREENSHOT auto-aggiornati ad ogni release (serve Playwright — non ancora presente).
 
 ## Fatto v0.8.21 (2026-06-25) — la velocità stelle si attiva davvero
 - Il frontend chiedeva ancora `limit:180` → 1 blocco, niente concorrenza. Ora `limit:700` → 4 query concorrenti (1/endpoint): il ~3,8× vale anche nell'app. + release.mjs: check tag silenzioso (niente `fatal:`).

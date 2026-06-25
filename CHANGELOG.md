@@ -2,6 +2,16 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.22] — 2026-06-25
+### Aggiunto — copertura del mondo: aggiungi paesi + scansione a RIPRESA
+- **Aggiungi paese (con ricerca)**: in «Copertura», un selettore con ricerca su **~190 paesi del mondo** (lista canonica `WORLD_COUNTRIES`, nome + continente, con alias di query Nominatim per i nomi «difficili» tipo *Russian Federation → Russia*). Si può scegliere e scansionare anche **paesi non ancora in archivio** — non più solo quelli già scoperti. I nuovi paesi si raggruppano nel continente giusto (niente più «(altro)»).
+- **«Completa tutti» ora copre TUTTO il mondo e RIPRENDE**: prima iterava solo i paesi già in archivio e **ripartiva sempre dall'Europa** → impossibile coprire tutto. Ora itera l'intera lista mondiale e usa un **cursore di ripresa** (localStorage, per nome-paese): riparte dal **paese successivo all'ultimo completato**. In UI: «riprende da: <paese>» + «ricomincia da capo». Combinato con l'incrementale (regioni già fatte <30gg saltate).
+- La query Nominatim usa l'alias quando serve, ma il paese **timbrato** sugli hotel resta il nome canonico (la copertura non si sdoppia).
+### Confermato — la .exe Windows si genera a OGNI dmg
+- Il flusso di release (da 0.8.20) committa+tagga ad ogni dmg → la CI costruisce la .exe: nessuna dmg senza .exe. (Parte solo con repo pubblico o billing CI attivo.)
+### Verificato
+- `tsc` pulito; anteprima (IT/EN/RU): selettore paese con **193 voci** (inclusi nuovi: Iceland, Madagascar…), pulsante «Aggiungi e scansiona», «riprende da: <paese>» corretto (cursore «Germany» → Gibraltar; «Italy» → Kosovo) e reset «ricomincia da capo» che azzera il cursore; 0 errori console. Sezione Guida + 2 voci «Novità» trilingui.
+
 ## [0.8.21] — 2026-06-25
 ### Corretto — la scansione stelle veloce ora si attiva DAVVERO
 - Il frontend chiedeva ancora blocchi da **180** alla ri-scansione stelle: con 180 il backend resta a **un solo blocco** (1 endpoint) e la concorrenza introdotta in 0.8.20 non entrava in gioco. Ora chiede **700** → 4 query concorrenti (una per mirror Overpass) → il **~3,8×** misurato si applica anche nell'app installata.
