@@ -328,6 +328,14 @@ const EN_SIGNAL: Record<string, string> = {
   activities_age: "Age-appropriate activities", safety: "Child safety",
 };
 
+// Pesi canonici dei segnali ATTIVI (da src-tauri/src/signals.json; 'reviews' è riservato/futuro → escluso).
+// Somma = 94 = massimo family-fit attivo. Usato dall'Analisi premium per breakdown e leve di miglioramento.
+const SIGNAL_CATALOG: { key: string; weight: number }[] = [
+  { key: "kids_club", weight: 22 }, { key: "kids_facilities", weight: 18 }, { key: "family_rooms", weight: 14 },
+  { key: "childcare", weight: 12 }, { key: "kids_dining", weight: 10 }, { key: "activities_age", weight: 10 }, { key: "safety", weight: 8 },
+];
+const SIGNAL_MAX = SIGNAL_CATALOG.reduce((s, x) => s + x.weight, 0);
+
 // Link di «rivendica la scheda» per-hotel verso kidotel.co. Chiave stabile = osm_type/osm_id (idempotente
 // per l'upsert lato sito). La base è configurabile in Impostazioni perché l'endpoint del sito è da costruire
 // (vedi piano operativo, Fase 1/2). Deterministico: nessun dato inventato.
@@ -948,12 +956,17 @@ export default function App() {
     (window as unknown as { __infoHtml?: string }).__infoHtml = buildInfographicHtml(mock, infoOpts);
     (window as unknown as { __insightsHtml?: string }).__insightsHtml = buildInsightsHtml(mock.stats, mock.hist, mock.topCountries.map((c) => ({ country: c.country, total: c.total, strong: c.family })) as CoverageRow[]);
     const mockH = { osm_type: "way", osm_id: 777, name: "Familienhotel Sole", city: "Lutago", province: null, region: "Alto Adige", country: "Italy", website: "https://example.com", phone: null, source: "OpenStreetMap", lat: 46.9, lon: 11.9, stars: 4, luxury: 1 } as Hotel;
-    const mockSc = { website_ok: true, pages_fetched: 3, family_fit_score: 91, signals: [
+    const mockSc = { website_ok: true, pages_fetched: 3, family_fit_score: 76, signals: [
       { key: "kids_club", weight: 22, present: true, quote: "Our kids club welcomes children from 3 to 12 with daily supervised activities and a dedicated playroom", url: "https://example.com/family" },
+      { key: "kids_facilities", weight: 18, present: true, quote: "Heated outdoor pool with a children's section, water slides and a baby pool", url: "https://example.com/pool" },
       { key: "family_rooms", weight: 14, present: true, quote: "Spacious family rooms sleep up to 5 with bunk beds and connecting options", url: "https://example.com/rooms" },
+      { key: "childcare", weight: 12, present: true, quote: "Professional childcare from 9am with qualified staff", url: "https://example.com/care" },
       { key: "kids_dining", weight: 10, present: true, quote: "Daily children's buffet with healthy options and early dinner times", url: null },
+      { key: "activities_age", weight: 10, present: false, quote: null, url: null },
+      { key: "safety", weight: 8, present: false, quote: null, url: null },
     ] } as EnrichResult;
     (window as unknown as { __certHtml?: string }).__certHtml = buildCertificateHtml(mockH, mockSc);
+    (window as unknown as { __analyticsHtml?: string }).__analyticsHtml = buildAnalyticsHtml(mockH, mockSc, mock.hist, mock.topCountries.map((c) => ({ country: c.country, total: c.total, strong: c.family })) as CoverageRow[]);
     (window as unknown as { __scoreHeat?: typeof scoreHeat }).__scoreHeat = scoreHeat;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [infoOpts, lang, settings.familyThreshold]);
@@ -1574,6 +1587,99 @@ export default function App() {
     } catch (e) { setError(String(e)); }
   }
 
+  // ANALISI PREMIUM per hotel (via economica: analytics a pagamento). Trasforma il punteggio in insight
+  // AZIONABILE: percentile vs concorrenti (da score_histogram), da dove arriva il punteggio (breakdown
+  // segnali), e LEVE DI MIGLIORAMENTO (segnali mancanti pesati). È un Produced Work: niente dati interni.
+  function buildAnalyticsHtml(h: Hotel, sc: EnrichResult, hist: number[], cov: CoverageRow[]): string {
+    const esc = (s: unknown) => String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] as string));
+    const nf = (n: number) => n.toLocaleString(lang);
+    const date = new Date().toLocaleDateString(lang);
+    const fill = (s: string, v: Record<string, string | number>) => Object.keys(v).reduce((a, k) => a.replace("{" + k + "}", String(v[k])), s);
+    const score = sc.family_fit_score ?? 0;
+    const present = new Set(sc.signals.filter((s) => s.present).map((s) => s.key));
+    const rows = SIGNAL_CATALOG.map((c) => ({ key: c.key, weight: c.weight, present: present.has(c.key), label: t(("signal." + c.key) as TKey) }));
+    const earned = rows.filter((r) => r.present).reduce((s, r) => s + r.weight, 0);
+    const missing = rows.filter((r) => !r.present).sort((a, b) => b.weight - a.weight);
+    const potential = missing.reduce((s, r) => s + r.weight, 0);
+    // percentile globale dalla distribuzione punteggi
+    const totalScored = Math.max(1, hist.reduce((s, n) => s + n, 0));
+    const b = Math.min(9, Math.max(0, Math.floor(score / 10)));
+    let cumBelow = 0; for (let i = 0; i < b; i++) cumBelow += hist[i] || 0;
+    const pctBetter = Math.min(100, Math.round(((cumBelow + (hist[b] || 0) / 2) / totalScored) * 100));
+    const topPct = Math.max(1, 100 - pctBetter);
+    // benchmark di paese
+    const cc = cov.find((c) => c.country === h.country);
+    const cStrong = cc ? cc.strong : 0, cTotal = cc ? cc.total : 0;
+    const cRate = cTotal ? Math.round((cStrong / cTotal) * 100) : 0;
+
+    const wMax = SIGNAL_CATALOG[0].weight;
+    const breakdown = rows.map((r) => `<div class="sg ${r.present ? "on" : "off"}"><div class="sg-lab">${esc(r.label)}</div><div class="sg-track"><div class="sg-fill" style="width:${Math.round((r.weight / wMax) * 100)}%"></div></div><div class="sg-w">${r.present ? "+" + r.weight : "—"}</div><div class="sg-st">${esc(r.present ? t("analytics.present") : t("analytics.missing"))}</div></div>`).join("");
+    const levers = missing.length
+      ? `<ul class="levers">${missing.map((r) => `<li><span class="lv-pts">+${r.weight}</span> ${esc(fill(t("analytics.lever"), { label: r.label }))}</li>`).join("")}</ul><div class="lv-tot">${esc(fill(t("analytics.potential"), { n: potential }))}</div>`
+      : `<div class="lv-max">${esc(t("analytics.levermax"))}</div>`;
+
+    return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kidotel — ${esc(t("analytics.title"))} · ${esc(h.name)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4 portrait; margin: 15mm; }
+  :root { --ink:#222223; --peach:#ffc27b; --amber:#ef9f27; --deep:#925a0c; --mut:#6b6b66; --line:#e6e4de; --soft:#fff3e4; }
+  * { box-sizing:border-box; } body { font-family:"Manrope",-apple-system,"Segoe UI",Arial,sans-serif; color:var(--ink); margin:0; padding:30px; background:#fff; }
+  h1,h2,h3 { font-family:"Sora",-apple-system,"Segoe UI",Arial,sans-serif; margin:0; }
+  .head { display:flex; align-items:center; gap:14px; border-bottom:3px solid var(--peach); padding-bottom:14px; }
+  .head .divider { width:1px; height:32px; background:var(--line); } .head h1 { font-size:18px; } .head .sub { color:var(--mut); font-size:13px; }
+  .hero { display:flex; align-items:center; gap:24px; margin:22px 0; flex-wrap:wrap; }
+  .big { font-family:"Sora",sans-serif; font-weight:800; font-size:58px; line-height:1; font-variant-numeric:tabular-nums; } .big small { font-size:24px; color:var(--mut); }
+  .toppct { background:var(--ink); color:#fff; font-family:"Sora",sans-serif; font-weight:800; font-size:15px; padding:8px 16px; border-radius:999px; }
+  .hero-txt { font-size:14px; color:var(--mut); max-width:46ch; }
+  .hotel { font-size:22px; font-weight:800; margin:2px 0; } .loc { color:var(--mut); font-size:14px; }
+  .card { border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin:14px 0; break-inside:avoid; } .card h3 { font-size:15px; color:var(--deep); margin:0 0 12px; }
+  .pos { display:grid; grid-template-columns:1fr 1fr; gap:16px; } .pos .lab { font-size:12px; color:var(--mut); } .pos .v { font-family:"Sora",sans-serif; font-weight:700; font-size:18px; margin-top:2px; }
+  .sg { display:grid; grid-template-columns:170px 1fr 46px 90px; align-items:center; gap:10px; padding:5px 0; font-size:13px; }
+  .sg-lab { font-weight:600; } .sg-track { background:#f0efe9; border-radius:6px; height:12px; overflow:hidden; } .sg-fill { height:100%; background:#dcd8d0; border-radius:6px; }
+  .sg.on .sg-fill { background:var(--amber); } .sg-w { text-align:right; font-variant-numeric:tabular-nums; font-weight:700; color:var(--deep); }
+  .sg.off { opacity:.7; } .sg-st { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; } .sg.on .sg-st { color:var(--deep); } .sg.off .sg-st { color:#b23b21; }
+  .earned { margin-top:10px; font-size:13px; color:var(--mut); } .earned b { color:var(--ink); font-family:"Sora",sans-serif; }
+  .levers { list-style:none; padding:0; margin:0; display:grid; gap:9px; } .levers li { font-size:13.5px; display:flex; align-items:center; gap:10px; }
+  .lv-pts { flex:0 0 auto; background:var(--soft); color:var(--deep); font-family:"Sora",sans-serif; font-weight:800; font-size:13px; padding:3px 10px; border-radius:999px; border:1px solid var(--peach); }
+  .lv-tot { margin-top:12px; font-weight:700; font-family:"Sora",sans-serif; } .lv-max { font-weight:700; color:var(--deep); }
+  .foot { margin-top:18px; padding-top:12px; border-top:1px solid var(--line); font-size:11px; color:var(--mut); line-height:1.6; } .foot a { color:var(--deep); }
+  .noprint { margin:0 0 14px; } .pbtn { font:inherit; font-weight:600; font-size:13px; padding:9px 18px; border-radius:8px; border:none; background:var(--ink); color:#fff; cursor:pointer; }
+  @media print { .noprint { display:none; } body { padding:0; } }
+</style></head><body>
+  <div class="noprint"><button class="pbtn" onclick="window.print()">${esc(t("info.print"))}</button></div>
+  <div class="head"><div class="mark">${wordmarkSvg(26, "#222223")}</div><div class="divider"></div><div><h1>${esc(t("analytics.title"))}</h1><div class="sub">${date}</div></div></div>
+  <div class="hotel">${esc(h.name)}</div><div class="loc">${esc(locationOf(h))}</div>
+  <div class="hero">
+    <div class="big">${esc(score)}<small>/100</small></div>
+    <div class="toppct">${esc(fill(t("analytics.toppct"), { n: topPct }))}</div>
+    <div class="hero-txt">${esc(fill(t("analytics.percentile"), { pct: pctBetter }))}</div>
+  </div>
+  <section class="card"><h3>${esc(t("analytics.position"))}</h3><div class="pos">
+    <div><div class="lab">${esc(t("analytics.posglobal"))}</div><div class="v">${esc(fill(t("analytics.toppct"), { n: topPct }))}</div></div>
+    <div><div class="lab">${esc(fill(t("analytics.country"), { c: h.country || "—" }))}</div><div class="v">${esc(fill(t("analytics.countryStat"), { fam: nf(cStrong), tot: nf(cTotal), rate: cRate }))}</div></div>
+  </div></section>
+  <section class="card"><h3>${esc(t("analytics.breakdown"))}</h3>${breakdown}
+    <div class="earned">${esc(t("analytics.earned")).replace("{e}", `<b>${esc(nf(earned))}</b>`).replace("{m}", esc(nf(SIGNAL_MAX)))}</div>
+  </section>
+  <section class="card"><h3>${esc(t("analytics.levers"))}</h3>${levers}</section>
+  <div class="foot">${esc(t("analytics.method"))}<br>© OpenStreetMap contributors (<a href="https://www.openstreetmap.org/copyright">ODbL</a>) · ${esc(t("footer.copyright"))} · Kidotel Radar ${APP_VERSION}</div>
+</body></html>`;
+  }
+
+  async function openHotelAnalytics(h: Hotel) {
+    const sc = scores[hkey(h)];
+    if (!sc || sc.family_fit_score == null) { setNotice(t("analytics.noscore")); return; }
+    try {
+      const [hist, cov] = await Promise.all([
+        invoke<number[]>("score_histogram"),
+        invoke<CoverageRow[]>("coverage_by_country", { threshold: settings.familyThreshold }),
+      ]);
+      await invoke("open_report", { html: buildAnalyticsHtml(h, sc, hist, cov) });
+    } catch (e) { setError(String(e)); }
+  }
+
   function buildReportHtml(): string {
     const esc = (s: unknown) =>
       String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] as string));
@@ -1742,7 +1848,10 @@ export default function App() {
           <>
             <OtaLinks h={h} t={t} />
             {sc && sc.family_fit_score != null && (
-              <div className="cert-row no-print"><button className="cert-btn" onClick={() => void openCertificate(h)} title={t("cert.hint")}><Icon name="check" size={14} /> {t("cert.btn")}</button></div>
+              <div className="cert-row no-print">
+                <button className="cert-btn" onClick={() => void openCertificate(h)} title={t("cert.hint")}><Icon name="check" size={14} /> {t("cert.btn")}</button>
+                <button className="cert-btn analytics-btn" onClick={() => void openHotelAnalytics(h)} title={t("analytics.hint")}><Icon name="chart" size={14} /> {t("analytics.btn")}</button>
+              </div>
             )}
             {sc && <ProofPanel sc={sc} t={t} lang={lang} />}
             {(reviewCounts[k] ?? 0) > 0 && <ReviewsPanel h={h} t={t} lang={lang} />}

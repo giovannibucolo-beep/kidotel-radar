@@ -2,8 +2,14 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.34` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.35` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-25
+
+## Fatto v0.8.35 (2026-06-25) — Analisi premium per hotel (insight azionabile vendibile)
+- Riga hotel valutato → «Analisi premium»: report che trasforma il punteggio in insight: percentile mondiale (da score_histogram, es. Top 8%), benchmark di paese, breakdown dei 7 segnali attivi (pesi da signals.json, max 94), leve di miglioramento (segnali mancanti pesati + potenziale). Produced Work ODbL-safe, nessun dato di altri hotel/interno. Implementa la via «analytics premium». `SIGNAL_CATALOG`, `buildAnalyticsHtml`/`openHotelAnalytics`.
+- Fix: riga «earned su 94» mostrava `<b>` escapizzato → corretto.
+- Verificato: tsc pulito, parità 327×3, anteprima (mock realistico score 76), matematica controllata (Top 8%/92%, 76/94, +18 potenziale, Italy 10%), attribuzione OSM, no dati interni, 0 errori console.
+- **Vie economiche fatte**: SEO/feed, report di mercato, Kidotel Certified, **analytics premium**. **Prossimo**: API «family-fit as a service», outreach 1:1. Lato kidotel.com: import feed + /claim (nota tecnica pronta).
 
 ## Fatto v0.8.34 (2026-06-25) — Kidotel Certified (certificato + badge per-hotel)
 - Riga hotel valutato → «Certificato Kidotel»: certificato brandizzato (Produced Work) con punteggio + servizi famiglia e PROVA citata dal sito (con fonte) + attribuzione OSM, da inviare/stampare; e badge HTML copiato negli appunti (link `{base}/hotel/{osm_type}/{osm_id}` → backlink kidotel.co). Implementa la via economica «Kidotel Certified». `buildCertificateHtml`/`badgeSnippet`/`openCertificate`.

@@ -2,6 +2,19 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.35] — 2026-06-25
+### Aggiunto — «Analisi premium» per-hotel: il punteggio diventa insight azionabile
+- Nella riga di un hotel **valutato** (espandi), accanto a «Certificato», ora c'è **«Analisi premium»** → apre un report (browser di sistema, stampa/PDF) che trasforma il family-fit in **insight vendibile all'hotel**:
+  - **Posizionamento**: percentile mondiale calcolato dalla distribuzione punteggi (`score_histogram`) → es. «**Top 8% nel mondo**», «batte il 92% degli hotel valutati»; **benchmark di paese** da `coverage_by_country` (hotel family su totale, % family-rated).
+  - **Da dove arriva il punteggio**: breakdown dei 7 segnali attivi (pesi canonici da `signals.json`: 22/18/14/12/10/10/8 = 94), presenti vs mancanti, con «{earned} su 94 conquistati».
+  - **Leve di miglioramento**: i segnali mancanti ordinati per peso → «+N punti comunicando/aggiungendo X», con **potenziale totale**.
+- È un **Produced Work** (ODbL-safe): attribuzione «© OpenStreetMap contributors», insight aggregati, **nessun dato di altri hotel identificabile**, nessun dato interno (CRM/valore). Implementa la via «analytics premium» del piano di uso economico.
+- `SIGNAL_CATALOG`/`SIGNAL_MAX`, `buildAnalyticsHtml`/`openHotelAnalytics`; i18n `analytics.*` (it/en/ru, parità **327×3**); mock dev `__analyticsHtml`.
+### Corretto
+- `buildAnalyticsHtml`: la riga «{earned} su 94» avvolgeva il tag `<b>` in `esc()` → mostrava `&lt;b&gt;` come testo. Ora il grassetto è iniettato dopo l'escape del testo tradotto.
+### Verificato
+- `tsc` pulito; parità **327×3**; anteprima (mock realistico, score 76 = somma pesi presenti): report renderizzato (screenshot) on-brand; **matematica controllata** — Top 8% / batte 92% (da istogramma), 76/94 conquistati, 5 presenti + 2 mancanti, potenziale +18 (10+8), paese Italy 2140/21.336 = 10%; attribuzione OSM presente, **nessun dato interno**; **0 errori console**.
+
 ## [0.8.34] — 2026-06-25
 ### Aggiunto — «Kidotel Certified»: certificato + badge per-hotel (via economica diretta)
 - Nella riga di un hotel **valutato** (espandi) compare **«Certificato Kidotel»** → genera un **certificato brandizzato** (apre nel browser di sistema, stampa/PDF): wordmark + sigillo «KIDOTEL CERTIFIED», nome/località, **punteggio family-fit grande**, i **servizi famiglia verificati con la citazione dal sito ufficiale** (prova breve attribuita + link alla fonte), data di rilascio, metodo Kidotel e attribuzione **«© OpenStreetMap contributors (ODbL)»**. È un'opera derivata (Produced Work): nessun contatto privato, prova citata (non paragrafi interi). Pensato da inviare all'hotel partner.
