@@ -2,6 +2,13 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.25] — 2026-06-25
+### Aggiunto — metodo del punteggio nella Guida + ticker «breaking news» delle scansioni
+- **Metodologia del family-fit nella Guida** (nuova sezione trilingue): spiega QUALI fattori valutiamo, con QUALE peso e PERCHÉ, e quindi perché si arriva a un certo voto. Pesi reali (somma 100, presi da `signals.json`): Miniclub/animazione 22 · Strutture bimbi 18 · Camere family 14 · Childcare 12 · Menù bimbi 10 · Attività per età 10 · Sicurezza 8 (+ Recensioni 6, riservato). Ribadito: ogni servizio conta solo con la frase del sito verificata parola per parola (in «Prova»); niente sito = 0; nessun dato inventato.
+- **Ticker «breaking news» delle scansioni in corso**: il banner di avanzamento ora è una barra scura con chip **● LIVE** in cui SCORRONO insieme le diverse scansioni attive — Copertura, Stelle, Valutazione — ognuna coi suoi **dati aggiornati in tempo reale**. Avanzamenti separati per canale (`covNote`/`starsNote`/`enrichNote`): non si sovrascrivono più a vicenda quando girano in parallelo. On-brand (ink + peach), si mette in pausa al passaggio del mouse, rispetta `prefers-reduced-motion`.
+### Verificato
+- `tsc` pulito; anteprima (mock, 2 scansioni in parallelo): ticker con «● LIVE» e DUE voci che scorrono — «Valutazione family-fit: 1560 valutati · 53.440 rimasti» + «Assegnazione stelle: 10.500 controllati · 2100 classificati · 129.311 rimasti» — con numeri che salgono live; sezione Guida «Come si calcola il punteggio (metodo)» con i pesi 22·18·14·12…; 0 errori console. i18n it/en/ru.
+
 ## [0.8.24] — 2026-06-25
 ### Corretto/Migliorato — il CRM mostra TUTTO l'archivio contattabile (non più 5000)
 - Il CRM mostrava solo gli hotel della pagina d'archivio caricata (**max 5000**). Ora carica **tutto l'archivio contattabile** (hotel con email/sito/telefono) tramite un nuovo comando **`select_crm`** — riga LEGGERA (niente `score_breakdown`/`enrichment`, che per decine di migliaia di righe peserebbero centinaia di MB), così si possono caricare anche 50–100k contatti in fretta.

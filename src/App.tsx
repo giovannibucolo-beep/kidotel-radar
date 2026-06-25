@@ -433,6 +433,11 @@ export default function App() {
   }
   const [dbQuery, setDbQuery] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
+  // Avanzamenti LIVE delle scansioni in corso (una per canale: copertura, stelle, valutazione). Vengono
+  // mostrati insieme in un ticker «breaking news» che scorre, ognuno con i suoi dati aggiornati.
+  const [covNote, setCovNote] = useState<string | null>(null);
+  const [starsNote, setStarsNote] = useState<string | null>(null);
+  const [enrichNote, setEnrichNote] = useState<string | null>(null);
   const [archiveTotal, setArchiveTotal] = useState<number | null>(null);
   const [archivePage, setArchivePage] = useState(0); // pagina dell'archivio (5000 per pagina)
   const [scoreStats, setScoreStats] = useState<ScoreStats | null>(null);
@@ -572,7 +577,7 @@ export default function App() {
       setNotice(null); // niente "misuro…" appeso se la misura fallisce
       setError(String(e));
     } finally {
-      setCovBusy(null);
+      setCovBusy(null); setCovNote(null);
     }
   }
 
@@ -587,11 +592,11 @@ export default function App() {
   // Core riusabile (no guard, no covBusy): scansiona un paese regione per regione. Ritorna i NUOVI.
   // `prefix` (es. "Europa 2/5 · ") antepone il contesto continente alle note durante lo scan continente.
   async function runCompleteCountry(country: string, prefix = "", force = false): Promise<number> {
-    setNotice(`${prefix}${country}: ${t("cov.enumerating")}…`);
+    setCovNote(`${prefix}${country}: ${t("cov.enumerating")}…`);
     // Nominatim: usa l'alias di query quando il nome pycountry non si geocodifica bene; il paese
     // TIMBRATO sugli hotel resta però il nome canonico (così la copertura raggruppa con il resto).
     const regions = await invoke<SubArea[]>("list_subareas", { query: nominatimQuery(country) });
-    if (!regions.length) { setNotice(`${prefix}${country}: ${t("cov.noregions")}`); return 0; }
+    if (!regions.length) { setCovNote(`${prefix}${country}: ${t("cov.noregions")}`); return 0; }
     // INCREMENTALE: salta le regioni già scansionate negli ultimi 30 giorni (niente da capo ogni volta).
     const keys = regions.map((r) => `${r.osm_type}/${r.osm_id}`);
     const done = force ? new Set<string>() : new Set(await invoke<string[]>("areas_scanned_within", { keys, days: 30 }).catch(() => []));
@@ -602,7 +607,7 @@ export default function App() {
       const rg = regions[i];
       if (done.has(`${rg.osm_type}/${rg.osm_id}`)) { skipped++; continue; } // già fatta di recente
       const skipNote = skipped ? `, ${skipped} ${t("cov.skipped")}` : "";
-      setNotice(`${prefix}${country}: ${t("cov.region")} ${i + 1}/${regions.length} — ${rg.name}… (+${(latest - before).toLocaleString(lang)} ${t("cov.new")}${skipNote})`);
+      setCovNote(`${prefix}${country}: ${t("cov.region")} ${i + 1}/${regions.length} — ${rg.name}… (+${(latest - before).toLocaleString(lang)} ${t("cov.new")}${skipNote})`);
       try {
         await invoke<number>("discover_area", { args: { osmType: rg.osm_type, osmId: rg.osm_id, s: rg.s, n: rg.n, w: rg.w, e: rg.e, country } });
         latest = coverageTotalOf(await loadCoverage(), country);
@@ -625,7 +630,7 @@ export default function App() {
     } catch (e) {
       setError(String(e));
     } finally {
-      setCovBusy(null);
+      setCovBusy(null); setCovNote(null);
     }
   }
 
@@ -650,7 +655,7 @@ export default function App() {
     } catch (e) {
       setError(String(e));
     } finally {
-      setCovBusy(null);
+      setCovBusy(null); setCovNote(null);
     }
   }
 
@@ -680,7 +685,7 @@ export default function App() {
     } catch (e) {
       setError(String(e));
     } finally {
-      setCovBusy(null);
+      setCovBusy(null); setCovNote(null);
     }
   }
 
@@ -699,7 +704,7 @@ export default function App() {
         if (b.processed === 0) break;
         checked += b.processed;
         withStars += b.with_stars;
-        setNotice(`${t("stars.backfilling")}: ${checked.toLocaleString(lang)} ${t("stars.checked")} · ${withStars.toLocaleString(lang)} ${t("stars.classified")} · ${b.remaining.toLocaleString(lang)} ${t("stars.remaining")}`);
+        setStarsNote(`${t("stars.backfilling")}: ${checked.toLocaleString(lang)} ${t("stars.checked")} · ${withStars.toLocaleString(lang)} ${t("stars.classified")} · ${b.remaining.toLocaleString(lang)} ${t("stars.remaining")}`);
         if (b.remaining === 0) break;
       }
       setNotice(`${t("stars.done")}: ${withStars.toLocaleString(lang)} / ${checked.toLocaleString(lang)}${covStopRef.current ? ` (${t("cov.stopped")})` : ""}.`);
@@ -707,7 +712,7 @@ export default function App() {
     } catch (e) {
       setError(String(e));
     } finally {
-      setStarsBusy(false);
+      setStarsBusy(false); setStarsNote(null);
     }
   }
 
@@ -868,10 +873,13 @@ kidotel.co`;
     setEnriching(true);
     // Chiavi degli hotel ATTUALMENTE in vista: aggiorniamo i loro voti sul posto.
     const inView = new Set(hotels.map(hkey));
+    let evaluated = 0;
     try {
       while (!stopRef.current) {
         const batch = await invoke<EnrichBatch>("enrich_batch", { limit: 24 });
         if (batch.processed === 0) break;
+        evaluated += batch.processed;
+        setEnrichNote(`${t("enrich.scoring")}: ${evaluated.toLocaleString(lang)} ${t("enrich.evaluated")} · ${batch.remaining.toLocaleString(lang)} ${t("stars.remaining")}`);
         const live: Record<string, EnrichResult> = {};
         for (const r of batch.results) {
           if (inView.has(r.id)) live[r.id] = { website_ok: r.website_ok, pages_fetched: r.pages_fetched, family_fit_score: r.family_fit_score, signals: r.signals };
@@ -881,6 +889,7 @@ kidotel.co`;
         if (batch.remaining === 0) break;
       }
     } finally {
+      setEnrichNote(null);
       setEnriching(false);
       await refreshStats();
       // Solo se l'utente sta guardando l'archivio lo ricarichiamo; con una scan/ricerca attiva
@@ -1528,7 +1537,26 @@ kidotel.co`;
           )}
 
           {area && <div className="area-caption">{area}</div>}
-          {notice && <div className="notice" role="status" title={t("settings.close")} onClick={() => setNotice(null)}>{notice}</div>}
+          {/* Ticker «breaking news»: le scansioni in corso (copertura · stelle · valutazione) scorrono
+              insieme, ognuna coi suoi dati aggiornati. Se nessuna è in corso, resta il notice statico. */}
+          {(() => {
+            const live = [enrichNote, covNote, starsNote].filter((s): s is string => !!s);
+            if (live.length === 0) {
+              return notice ? <div className="notice" role="status" title={t("settings.close")} onClick={() => setNotice(null)}>{notice}</div> : null;
+            }
+            return (
+              <div className="ticker" role="status" aria-live="polite">
+                <span className="ticker-live"><span className="ticker-dot" /> LIVE</span>
+                <div className="ticker-mask">
+                  <div className="ticker-track">
+                    {[...live, ...live].map((s, i) => (
+                      <span className="ticker-item" key={i} aria-hidden={i >= live.length}><span className="ticker-sep">●</span>{s}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {error && <div className="error">{t("scan.error")}: {error}</div>}
 

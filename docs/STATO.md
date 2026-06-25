@@ -2,8 +2,13 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.24` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.25` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-25
+
+## Fatto v0.8.25 (2026-06-25) — metodo punteggio in Guida + ticker «breaking news» scansioni
+- Guida: nuova sezione trilingue «Come si calcola il punteggio (metodo)» — fattori, pesi reali (da signals.json: 22/18/14/12/10/10/8 +6 riservato = 100) e perché; verbatim obbligatorio, no sito = 0, niente inventato.
+- Ticker «breaking news»: avanzamenti scansioni separati per canale (`covNote`/`starsNote`/`enrichNote`, non più un solo `notice` che si sovrascrive) → barra ink con chip ● LIVE che fa scorrere INSIEME le scansioni attive coi dati live. CSS `.ticker*` (pausa su hover, reduced-motion). i18n enrich.scoring/evaluated it/en/ru.
+- Verificato (mock 2 scansioni //): ticker con 2 voci scorrevoli + numeri live; sezione metodo coi pesi; 0 errori; tsc ok.
 
 ## Fatto v0.8.24 (2026-06-25) — CRM su TUTTO l'archivio contattabile (non più 5000)
 - Nuovo comando `select_crm` (riga leggera CrmRow, niente breakdown) → il CRM carica tutto l'archivio contattabile in stato dedicato `crmRows` (disaccoppiato dalla pagina d'archivio da 5000). Filtri cumulabili (paese/stelle/family-fit/valore/recapitabile + chip stato) sull'intero set; conteggio+valore totale sull'intero set; tabella max `renderCap` con nota «Mostro i primi N/Totale». Loading + «aggiorna». `contactable` memoizzato. i18n it/en/ru.
