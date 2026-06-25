@@ -388,6 +388,31 @@ async function openExternal(url: string) {
 }
 const extLink = (url: string) => (e: { preventDefault: () => void }) => { e.preventDefault(); void openExternal(url); };
 
+// Link «cerca su» le OTA: ricerca PRE-COMPILATA (nome + città + paese) sulla piattaforma — NON la
+// pagina esatta dell'hotel (quella richiede l'ID interno via API/affiliazione → roadmap). È una
+// ricerca: l'utente sceglie il risultato. Nessun ID inventato. Google Hotels aggrega i prezzi OTA.
+const OTA_SITES: { name: string; url: (q: string) => string }[] = [
+  { name: "Google Hotels", url: (q) => `https://www.google.com/travel/search?q=${q}` },
+  { name: "Booking", url: (q) => `https://www.booking.com/searchresults.html?ss=${q}` },
+  { name: "Expedia", url: (q) => `https://www.expedia.com/Hotel-Search?destination=${q}` },
+  { name: "Hotels.com", url: (q) => `https://www.hotels.com/Hotel-Search?destination=${q}` },
+  { name: "TripAdvisor", url: (q) => `https://www.tripadvisor.com/Search?q=${q}` },
+];
+const otaQuery = (h: { name: string; city?: string | null; country?: string | null }) =>
+  encodeURIComponent([h.name, h.city, h.country].filter(Boolean).join(" "));
+
+function OtaLinks({ h, t }: { h: Hotel; t: (k: TKey) => string }) {
+  const q = otaQuery(h);
+  return (
+    <div className="ota-row no-print">
+      <span className="ota-lab">{t("ota.find")}:</span>
+      {OTA_SITES.map((o) => (
+        <a key={o.name} className="ota-chip" href={o.url(q)} target="_blank" rel="noreferrer" onClick={extLink(o.url(q))} title={`${o.name} — ${decodeURIComponent(q)}`}>{o.name}</a>
+      ))}
+    </div>
+  );
+}
+
 export default function App() {
   const { t, lang, setLang } = useI18n();
   const [query, setQuery] = useState("");
@@ -1425,11 +1450,13 @@ kidotel.co`;
           <span className="cell-site">{h.website ? <a href={h.website} target="_blank" rel="noreferrer" onClick={extLink(h.website)}>{prettyHost(h.website)}</a> : <span className="muted">{t("results.nosite")}</span>}</span>
           <span className="no-print">
             {(reviewCounts[k] ?? 0) > 0 && <span className="rev-badge" title={t("reviews.title")}><Icon name="chat" size={12} /> {reviewCounts[k]}</span>}
-            <button className="proof-toggle" disabled={!sc && (reviewCounts[k] ?? 0) === 0} onClick={() => setExpanded(isOpen ? null : k)} aria-expanded={isOpen}>{t("results.proof")}</button>
+            {/* sempre espandibile: anche un hotel senza voto/recensioni mostra i link «cerca su» OTA */}
+            <button className="proof-toggle" onClick={() => setExpanded(isOpen ? null : k)} aria-expanded={isOpen}>{t("results.proof")}</button>
           </span>
         </div>
         {isOpen && (
           <>
+            <OtaLinks h={h} t={t} />
             {sc && <ProofPanel sc={sc} t={t} lang={lang} />}
             {(reviewCounts[k] ?? 0) > 0 && <ReviewsPanel h={h} t={t} lang={lang} />}
           </>
@@ -2015,6 +2042,7 @@ function CrmView({
                 {h.website && <a className="crm-link" href={h.website} target="_blank" rel="noreferrer" onClick={extLink(h.website)} title={h.website}>{prettyHost(h.website)}</a>}
                 {h.phone && <a className="crm-link" href={`tel:${h.phone}`} onClick={extLink(`tel:${h.phone}`)} title={h.phone}><Icon name="phone" size={14} /> {h.phone}</a>}
                 <button className="crm-write" onClick={() => onEmail(h)} title={t("crm.genEmail")}><Icon name="mail" size={14} /> {t("crm.write")}</button>
+                <OtaLinks h={h} t={t} />
               </span>
               <span>
                 <select

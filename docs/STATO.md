@@ -2,8 +2,12 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.27` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.28` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-25
+
+## Fatto v0.8.28 (2026-06-25) — «Cerca su» le OTA (ricerca pre-compilata)
+- Espandi riga hotel (e CRM) → pulsanti «Cerca su» Google Hotels/Booking/Expedia/Hotels.com/TripAdvisor con ricerca pre-compilata (nome+città+paese). È una RICERCA, non la pagina esatta (quella = API/affiliazione, roadmap v0.5): nessun ID inventato. Riga sempre espandibile. `OTA_SITES`+`OtaLinks`, i18n `ota.find` it/en/ru, CSS `.ota-*`.
+- Verificato (anteprima): chip resi, URL corretti, etichetta «Cerca su/Search on/Найти на»; tsc+parità 276×3, 0 errori.
 
 ## Fatto v0.8.27 (2026-06-25) — ticker/didascalia traducibili al volo + scorrimento fluido
 - Causa «testo non tradotto»: stringhe già tradotte salvate in stato (area, covNote/starsNote/enrichNote) → congelate. Fix: tipo `LiveMsg = (t,lang)=>string`; i messaggi sono FUNZIONI valutate al render → si traducono cambiando lingua anche a scansione in corso. `runCompleteCountry` riceve un prefisso-funzione. Export/print usano `area(t,lang)`.

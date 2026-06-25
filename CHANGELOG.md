@@ -2,6 +2,14 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.28] — 2026-06-25
+### Aggiunto — «Cerca su» le OTA (Booking, Expedia, Hotels.com, Google Hotels, TripAdvisor)
+- Espandendo la riga di un hotel (e nel **CRM**) compaiono i pulsanti **«Cerca su»** che aprono la **ricerca pre-compilata** (nome + città + paese) sulle principali OTA: Google Hotels (aggrega i prezzi), Booking, Expedia, Hotels.com, TripAdvisor. Si apre nel browser di sistema.
+- **Onesto by design**: è una **ricerca**, non la pagina esatta dell'hotel — quella richiede l'ID interno via API/affiliazione (roadmap v0.5). Nessun ID/URL inventato. La riga ora è **sempre espandibile** (anche un hotel senza voto mostra i link OTA).
+- `OTA_SITES` + `OtaLinks` in `App.tsx`, i18n `ota.find` it/en/ru, CSS `.ota-*`.
+### Verificato
+- `tsc` pulito; parità i18n **276 × 3**; anteprima: espansione riga → «Cerca su: Google Hotels · Booking · Expedia · Hotels.com · TripAdvisor», URL corretti pre-compilati (es. `…?ss=Hotel%20Schwarzenstein%20Lutago%20Italy`), etichetta tradotta IT/EN/RU; 0 errori console.
+
 ## [0.8.27] — 2026-06-25
 ### Corretto — il ticker e la didascalia archivio ora si TRADUCONO; scorrimento più fluido
 - **Testo non tradotto** (ticker «Assegnazione stelle: … controllati …» e «Archivio salvato — pagina X/Y» restavano in italiano in un'app russa): erano **stringhe già tradotte salvate in stato**, congelate nella lingua di quando venivano create; cambiando lingua non si ri-traducevano. Ora avanzamenti delle scansioni e didascalia archivio sono **funzioni `(t, lang) → testo`** valutate al RENDER → si traducono **al volo**, anche a scansione in corso (es. IT «Assegnazione stelle… rimasti» → RU «Присвоение звёзд… осталось», numeri formattati nella lingua corrente). Tipo `LiveMsg`; `runCompleteCountry` prende un prefisso-funzione invece di una stringa pre-tradotta.
