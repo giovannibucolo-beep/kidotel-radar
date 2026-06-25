@@ -104,7 +104,7 @@ function releaseGitAndWindows(version) {
   // 2) push branch + tag → innesca la CI (build .exe Windows + .dmg macOS).
   try { git(["push", "origin", "HEAD"]); } catch (e) { console.log(`push branch: ${String(e.message).split("\n")[0]}`); }
   try {
-    try { git(["rev-parse", tag]); } catch { git(["tag", tag]); }
+    if (git(["tag", "--list", tag]) !== tag) git(["tag", tag]); // niente "fatal" se il tag non esiste
     git(["push", "origin", tag]);
     console.log(`tag ${tag} spinto → CI in avvio (costruisce la .exe Windows)`);
   } catch (e) {
