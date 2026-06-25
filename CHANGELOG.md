@@ -2,6 +2,20 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.20] — 2026-06-25
+### Aggiunto — Fascia di costo € → €€€€€ (il classico $ → $$$$$)
+- Ogni hotel ha ora un **indicatore di costo a 5 livelli** (€ economico → €€€€€ molto caro), accanto a stelle e voto. **COMBINATO** (scelta dell'utente): se il sito pubblica una fascia di prezzo strutturata (schema.org **`priceRange`**) usiamo quel **dato REALE** — il tooltip mostra il prezzo a notte stimato e la **citazione verbatim** dal sito (badge più marcato); altrimenti una **STIMA** da segnali reali — stelle ★ (OSM) + lusso + indice costo-vita del paese (badge più tenue). **Nessun prezzo inventato.**
+- Backend: `extract_price` legge `priceRange` (simboli «€€€» → livello, o fascia numerica «120-300»/«€90 - €140» → prezzo a notte → livello), con conversione valuta grezza e gestione separatori migliaia/decimali. Salvato in `price_tier`/`price_eur`/`price_src` durante la valutazione (in `enrich_batch`/`enrich_hotel`, dove già si scarica il sito). Frontend `priceTierOf` per la stima + badge €→€€€€€ (pip pieni/tenui, reale/stima). i18n `price.*` it/en/ru; sezione Guida trilingue.
+### Migliorato — ri-scansione STELLE «ultra-veloce»
+- La classificazione ★ (da OSM, pulsante «Assegna stelle») ora scarica **in parallelo con rotazione degli endpoint**: pochi blocchi grandi (uno per mirror Overpass, una sola ondata) invece di un'unica query sequenziale → **≈3,8× più veloce** (misurato live: **700 hotel in ~42s, ≈17 hotel/s**, prima ≈4–7/s). Client Overpass **condiviso**, timeout brevi con failover. I **blocchi falliti vengono ritentati** (restano `stars=NULL`) invece di marcare gli hotel «senza stelle».
+### Aggiunto — la .exe Windows si genera a ogni release (come la dmg)
+- `scripts/release.mjs`: dopo dmg+install, **committa il rilascio** (messaggio dal CHANGELOG) e **spinge branch+tag** → GitHub Actions costruisce la **.exe** (+ .dmg) e le allega a una **release in bozza**, **ripulendo le bozze vecchie**. Tutto best-effort: se manca remote/`gh` o la CI è bloccata (repo privato/billing), il rilascio macOS resta completo. (La .exe non si costruisce su macOS: la fa la CI.)
+### Corretto
+- `applyRows` (elenco piatto) non passava le nuove colonne prezzo all'oggetto Hotel → il prezzo REALE non sarebbe comparso nell'Elenco. Allineato a `hotelRowToHotel`.
+### Verificato
+- `cargo test` 13/13 (incl. nuovo `extract_price_reads_schema_pricerange`) + **live**: `live_backfill_stars` (700 in 42s) e `live_score_samples` (estrazione reale: Hotel Schwarzenstein → `priceRange «€€€€»` → livello 4). `tsc` + `vite build` puliti.
+- **Anteprima (mock dati)**: badge €→€€€€€ reso su 4 hotel di prova — reale vs stima, pip pieni/tenui leggibili a colpo d'occhio — con tooltip corretti e **localizzati IT/EN/RU**; sezione Guida «Уровень цен / Price range / Fascia di costo» presente; 0 errori console.
+
 ## [0.8.19] — 2026-06-25
 ### Aggiunto — Manuale completo in russo
 - **Guida/manuale interamente in russo**: tutte le **11 sezioni** della Guida e le voci **«Novità»** ora tradotte in russo (workflow multi-agente in parallelo: 22 stringhe Guida + 16 voci changelog). Il russo non ripiega più sull'inglese (`s[lang] ?? s.en`).

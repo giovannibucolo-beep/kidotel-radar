@@ -81,6 +81,22 @@ fn enrich_client() -> &'static reqwest::Client {
     })
 }
 
+// Client CONDIVISO per Overpass (scoperta + ri-scansione stelle): creato una sola volta → riusa lo
+// stack TLS e le connessioni keep-alive invece di ricostruirli a ogni chiamata. Niente timeout di
+// default: ogni query Overpass passa il proprio timeout PER-richiesta (le aree grandi durano oltre un
+// minuto). È uno dei pilastri della scansione stelle "ultra-veloce".
+fn overpass_client() -> &'static reqwest::Client {
+    static C: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
+    C.get_or_init(|| {
+        reqwest::Client::builder()
+            .user_agent(UA)
+            .connect_timeout(std::time::Duration::from_secs(10))
+            .pool_max_idle_per_host(6)
+            .build()
+            .expect("overpass client")
+    })
+}
+
 // ---------- SCOPRI ----------
 
 struct Bbox {
@@ -193,9 +209,18 @@ const SCAN_BUDGET: Duration = Duration::from_secs(240);
 // connect_timeout (10s, dal client) scarta in fretta gli endpoint morti; `per_req` limita anche
 // gli endpoint che accettano la connessione ma poi "stallano" il corpo.
 async fn overpass_once(client: &reqwest::Client, q: &str, per_req: Duration) -> Result<Vec<Value>, String> {
+    overpass_once_from(client, q, per_req, 0).await
+}
+
+// Come overpass_once ma partendo dall'endpoint con indice `start` (a rotazione). Serve quando più
+// query girano IN PARALLELO: assegnando a ciascuna un endpoint diverso si distribuisce il carico
+// invece di accalcarsi tutte sul primo (era la causa della ri-scansione stelle lenta).
+async fn overpass_once_from(client: &reqwest::Client, q: &str, per_req: Duration, start: usize) -> Result<Vec<Value>, String> {
     let mut last = String::from("nessun endpoint disponibile");
-    for ep in OVERPASS_ENDPOINTS {
-        match client.post(*ep).form(&[("data", q)]).timeout(per_req).send().await {
+    let n = OVERPASS_ENDPOINTS.len();
+    for k in 0..n {
+        let ep = OVERPASS_ENDPOINTS[(start + k) % n];
+        match client.post(ep).form(&[("data", q)]).timeout(per_req).send().await {
             Ok(resp) => {
                 let status = resp.status().as_u16();
                 if status == 400 {
@@ -236,7 +261,11 @@ async fn overpass_once(client: &reqwest::Client, q: &str, per_req: Duration) -> 
 
 // Come overpass_once ma con UN ritentativo (dopo 2s) se il fallimento è transitorio (sovraccarico).
 async fn overpass_query(client: &reqwest::Client, q: &str, per_req: Duration) -> Result<Vec<Value>, String> {
-    match overpass_once(client, q, per_req).await {
+    overpass_query_from(client, q, per_req, 0).await
+}
+
+async fn overpass_query_from(client: &reqwest::Client, q: &str, per_req: Duration, start: usize) -> Result<Vec<Value>, String> {
+    match overpass_once_from(client, q, per_req, start).await {
         Ok(v) => Ok(v),
         Err(first) => {
             // se è chiaramente non-transitorio (query 400), non ritentare.
@@ -244,7 +273,7 @@ async fn overpass_query(client: &reqwest::Client, q: &str, per_req: Duration) ->
                 return Err(first);
             }
             tokio::time::sleep(Duration::from_secs(2)).await;
-            overpass_once(client, q, per_req).await
+            overpass_once_from(client, q, per_req, start).await
         }
     }
 }
@@ -563,12 +592,91 @@ pub struct StarsBatch {
     pub remaining: i64,    // hotel ancora da controllare
 }
 
+// Scarica il tag `stars`/`luxury` da Overpass per un insieme di hotel (osm_type, osm_id), IN
+// PARALLELO: divide gli id in al massimo 3 blocchi e fa 3 query concorrenti (client condiviso) — così
+// la latenza di rete si sovrappone invece di sommarsi. Restituisce (mappa "type/id" → (stelle, lusso),
+// insieme degli id effettivamente COPERTI da una risposta riuscita). Gli id di un blocco fallito NON
+// finiscono in `covered`: restano stars=NULL e verranno ritentati, invece di essere marcati "0".
+async fn fetch_stars_for(
+    items: &[(String, i64)],
+) -> Result<
+    (
+        std::collections::HashMap<String, (Option<i64>, bool)>,
+        std::collections::HashSet<String>,
+    ),
+    String,
+> {
+    use std::collections::{HashMap, HashSet};
+    if items.is_empty() {
+        return Ok((HashMap::new(), HashSet::new()));
+    }
+    // Il costo Overpass è dominato dall'ATTESA DI UNO SLOT, non dal calcolo né dal round-trip. Quindi:
+    // pochi blocchi GRANDI (uno per endpoint, una sola ondata) battono tanti blocchi piccoli su più
+    // ondate. Spezziamo in ≤ N blocchi (N = numero di endpoint) e li lanciamo IN PARALLELO con
+    // ROTAZIONE: ognuno parte da un endpoint diverso → niente coda sullo stesso mirror.
+    let n_eps = OVERPASS_ENDPOINTS.len().max(1);
+    let n_chunks = items.len().div_ceil(200).clamp(1, n_eps);
+    let chunk_size = items.len().div_ceil(n_chunks);
+
+    let mut handles = Vec::new();
+    for (i, chunk) in items.chunks(chunk_size).enumerate() {
+        let chunk: Vec<(String, i64)> = chunk.to_vec();
+        handles.push(tauri::async_runtime::spawn(async move {
+            let client = overpass_client();
+            let ids = |kind: &str| {
+                chunk.iter().filter(|(t, _)| t == kind).map(|(_, i)| i.to_string()).collect::<Vec<_>>().join(",")
+            };
+            let mut parts = String::new();
+            let nn = ids("node");
+            if !nn.is_empty() { parts.push_str(&format!("node(id:{nn});")); }
+            let ww = ids("way");
+            if !ww.is_empty() { parts.push_str(&format!("way(id:{ww});")); }
+            let rr = ids("relation");
+            if !rr.is_empty() { parts.push_str(&format!("relation(id:{rr});")); }
+            let q = format!("[out:json][timeout:40];({parts});out tags;");
+            let res = overpass_query_from(client, &q, Duration::from_secs(45), i).await;
+            (chunk, res)
+        }));
+    }
+
+    let mut found: HashMap<String, (Option<i64>, bool)> = HashMap::new();
+    let mut covered: HashSet<String> = HashSet::new();
+    let mut last_err = String::from("nessun blocco riuscito");
+    for h in handles {
+        let (chunk, res) = match h.await {
+            Ok(pair) => pair,
+            Err(e) => { last_err = e.to_string(); continue; }
+        };
+        match res {
+            Ok(els) => {
+                for (t, id) in &chunk {
+                    covered.insert(format!("{t}/{id}"));
+                }
+                for el in els {
+                    let t = el.get("type").and_then(|x| x.as_str()).unwrap_or("");
+                    let id = el.get("id").and_then(|x| x.as_i64()).unwrap_or(0);
+                    let tags = el.get("tags");
+                    let stars_raw = tags.and_then(|x| x.get("stars")).and_then(|v| v.as_str());
+                    let lux_tag = tags.and_then(|x| x.get("luxury")).and_then(|v| v.as_str()) == Some("yes");
+                    found.insert(format!("{t}/{id}"), parse_stars(stars_raw, lux_tag));
+                }
+            }
+            Err(e) => { last_err = e; }
+        }
+    }
+    if covered.is_empty() {
+        return Err(last_err);
+    }
+    Ok((found, covered))
+}
+
 // Ri-scansione DB per le STELLE: prende un blocco di hotel senza classificazione, chiede a Overpass il
 // tag `stars` per i loro osm_id e lo salva (gli hotel senza stelle vengono marcati stars=0 = controllati).
 // Riusabile a blocchi dal frontend con avanzamento — è la versione in-app di scripts/backfill-stars.mjs.
 #[tauri::command]
 pub async fn backfill_stars(app: tauri::AppHandle, limit: Option<i64>) -> Result<StarsBatch, String> {
-    let lim = limit.unwrap_or(180).clamp(1, 400);
+    // Blocco più grande (700 di default) + fetch concorrente: meno round-trip, latenza sovrapposta.
+    let lim = limit.unwrap_or(700).clamp(1, 2000);
     let items: Vec<(String, i64)> = {
         let conn = crate::db::open_db(&app)?;
         let mut stmt = conn
@@ -587,39 +695,21 @@ pub async fn backfill_stars(app: tauri::AppHandle, limit: Option<i64>) -> Result
         return Ok(StarsBatch { processed: 0, with_stars: 0, remaining: 0 });
     }
 
-    let client = http_client()?;
-    let ids = |kind: &str| {
-        items.iter().filter(|(t, _)| t == kind).map(|(_, i)| i.to_string()).collect::<Vec<_>>().join(",")
-    };
-    let mut parts = String::new();
-    let n = ids("node");
-    if !n.is_empty() { parts.push_str(&format!("node(id:{n});")); }
-    let w = ids("way");
-    if !w.is_empty() { parts.push_str(&format!("way(id:{w});")); }
-    let r = ids("relation");
-    if !r.is_empty() { parts.push_str(&format!("relation(id:{r});")); }
-    let q = format!("[out:json][timeout:120];({parts});out tags;");
-    let els = overpass_query(&client, &q, Duration::from_secs(120))
-        .await
-        .map_err(|e| overpass_unavailable(&e))?;
-
-    let mut found: std::collections::HashMap<String, (Option<i64>, bool)> = std::collections::HashMap::new();
-    for el in els {
-        let t = el.get("type").and_then(|x| x.as_str()).unwrap_or("");
-        let id = el.get("id").and_then(|x| x.as_i64()).unwrap_or(0);
-        let tags = el.get("tags");
-        let stars_raw = tags.and_then(|x| x.get("stars")).and_then(|v| v.as_str());
-        let lux_tag = tags.and_then(|x| x.get("luxury")).and_then(|v| v.as_str()) == Some("yes");
-        found.insert(format!("{t}/{id}"), parse_stars(stars_raw, lux_tag));
-    }
+    let (found, covered) = fetch_stars_for(&items).await.map_err(|e| overpass_unavailable(&e))?;
 
     let mut with_stars = 0usize;
+    let mut processed = 0usize;
     let remaining: i64 = {
         let mut conn = crate::db::open_db(&app)?;
         let tx = conn.transaction().map_err(|e| e.to_string())?;
         for (t, id) in &items {
-            let (stars_opt, luxury) = found.get(&format!("{t}/{id}")).cloned().unwrap_or((None, false));
-            let stars = stars_opt.unwrap_or(0); // None/non trovato → 0 = controllato, niente stelle
+            let key = format!("{t}/{id}");
+            if !covered.contains(&key) {
+                continue; // blocco fallito per questo id → lascialo NULL, si riprova al prossimo giro
+            }
+            processed += 1;
+            let (stars_opt, luxury) = found.get(&key).cloned().unwrap_or((None, false));
+            let stars = stars_opt.unwrap_or(0); // controllato ma senza tag stelle → 0
             if stars >= 1 { with_stars += 1; }
             tx.execute(
                 "UPDATE hotels SET stars=?3, luxury=?4 WHERE osm_type=?1 AND osm_id=?2",
@@ -630,7 +720,7 @@ pub async fn backfill_stars(app: tauri::AppHandle, limit: Option<i64>) -> Result
         tx.commit().map_err(|e| e.to_string())?;
         conn.query_row("SELECT COUNT(*) FROM hotels WHERE stars IS NULL", [], |r| r.get(0)).unwrap_or(0)
     };
-    Ok(StarsBatch { processed: items.len(), with_stars, remaining })
+    Ok(StarsBatch { processed, with_stars, remaining })
 }
 
 #[derive(Serialize)]
@@ -1101,29 +1191,177 @@ fn extract_family_links(html: &str, base: &reqwest::Url) -> Vec<String> {
     out
 }
 
-// Restituisce le pagine (testo) PIÙ un'eventuale email di contatto trovata sull'HTML grezzo.
-async fn gather_pages(client: &reqwest::Client, base_url: &str) -> (Vec<(String, String)>, Option<String>) {
+// ---------- FASCIA DI PREZZO ($ → $$$$$) ----------
+// Componente REALE del costo: legge la fascia di prezzo che il sito stesso PUBBLICA in modo
+// strutturato (schema.org `priceRange`), o come simboli di valuta ("€€€" → livello 3) o come fascia
+// numerica ("120-300", "€90 - €140" → prezzo a notte → livello). Dato citato dal sito (niente
+// inventato): se assente → None, e la UI ripiega sulla STIMA da stelle+paese. La componente stima è
+// lato frontend; qui sta solo la parte "vera" dal sito.
+struct PriceHit {
+    tier: i64,           // livello 1–5 ($ → $$$$$)
+    eur: Option<i64>,    // prezzo a notte (≈ EUR) quando è una fascia numerica
+    src: String,         // valore verbatim del priceRange (prova: è copiato dal sito)
+}
+
+// Cambio approssimato verso EUR: serve solo a incasellare in 5 fasce, non a un calcolo preciso.
+fn currency_rate_to_eur(sym: &str) -> f64 {
+    match sym {
+        "€" | "eur" => 1.0,
+        "$" | "usd" | "us$" => 0.92,
+        "£" | "gbp" => 1.17,
+        "chf" | "fr" => 1.05,
+        "¥" | "jpy" => 0.0061,
+        "₽" | "rub" => 0.011,
+        "zł" | "pln" => 0.23,
+        "kč" | "czk" => 0.040,
+        "₺" | "try" => 0.030,
+        _ => 1.0, // sconosciuto → assumi EUR (l'incasellamento è grezzo, va bene)
+    }
+}
+
+fn price_bucket_eur(eur: f64) -> i64 {
+    if eur < 70.0 { 1 } else if eur < 120.0 { 2 } else if eur < 200.0 { 3 } else if eur < 350.0 { 4 } else { 5 }
+}
+
+// Estrae i numeri "interi" da un token, gestendo separatori migliaia (gruppo da 3) vs decimali.
+fn numbers_in(token: &str) -> Vec<f64> {
+    let chars: Vec<char> = token.chars().collect();
+    let mut nums: Vec<f64> = Vec::new();
+    let mut i = 0;
+    while i < chars.len() {
+        if chars[i].is_ascii_digit() {
+            let mut intpart = String::new();
+            loop {
+                while i < chars.len() && chars[i].is_ascii_digit() {
+                    intpart.push(chars[i]);
+                    i += 1;
+                }
+                if i + 1 < chars.len() && (chars[i] == '.' || chars[i] == ',') && chars[i + 1].is_ascii_digit() {
+                    let mut k = i + 1;
+                    let mut grp = 0;
+                    while k < chars.len() && chars[k].is_ascii_digit() { grp += 1; k += 1; }
+                    if grp == 3 {
+                        i += 1; // separatore migliaia → concatena le cifre successive
+                        continue;
+                    } else {
+                        i = k; // separatore decimale → chiudi il numero (ignora la frazione)
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+            if let Ok(v) = intpart.parse::<f64>() { nums.push(v); }
+        } else {
+            i += 1;
+        }
+    }
+    nums
+}
+
+fn parse_price_range(token: &str) -> Option<(i64, Option<i64>, String)> {
+    let trimmed = token.trim();
+    if trimmed.is_empty() { return None; }
+    let sym_count = trimmed.chars().filter(|c| matches!(c, '€' | '$' | '£' | '¥' | '₽')).count();
+    let mut nums = numbers_in(trimmed);
+    nums.retain(|&v| (10.0..=20000.0).contains(&v)); // prezzo a notte plausibile
+    let src: String = trimmed.chars().take(28).collect();
+    if !nums.is_empty() {
+        let low = nums.iter().cloned().fold(f64::INFINITY, f64::min);
+        let lc = trimmed.to_lowercase();
+        let sym = if trimmed.contains('€') || lc.contains("eur") { "€" }
+            else if trimmed.contains('£') || lc.contains("gbp") { "£" }
+            else if lc.contains("chf") { "chf" }
+            else if trimmed.contains('$') || lc.contains("usd") { "$" }
+            else if trimmed.contains('¥') || lc.contains("jpy") { "¥" }
+            else if trimmed.contains('₽') || lc.contains("rub") { "₽" }
+            else { "€" };
+        let eur = low * currency_rate_to_eur(sym);
+        return Some((price_bucket_eur(eur), Some(eur.round() as i64), src));
+    }
+    if sym_count >= 1 {
+        return Some(((sym_count as i64).clamp(1, 5), None, src));
+    }
+    None
+}
+
+// Dalla finestra dopo "pricerange", estrae il token-valore (es. `: "€€€"`, `content="$$"`,
+// `>€120 - €300<`): salta fino al primo simbolo di valuta o cifra, poi copia fino a un delimitatore.
+fn price_range_token(window: &str) -> Option<String> {
+    let chars: Vec<char> = window.chars().collect();
+    let mut s = 0;
+    while s < chars.len() && !(chars[s].is_ascii_digit() || matches!(chars[s], '€' | '$' | '£' | '¥' | '₽')) {
+        s += 1;
+    }
+    if s >= chars.len() { return None; }
+    let mut out = String::new();
+    let mut j = s;
+    while j < chars.len() && out.chars().count() < 40 {
+        let c = chars[j];
+        if matches!(c, '"' | '<' | '>' | '{' | '}' | ';' | '\n' | '\r' | '|') { break; }
+        out.push(c);
+        j += 1;
+    }
+    let tok = out.trim().to_string();
+    if tok.is_empty() { None } else { Some(tok) }
+}
+
+fn extract_price(html: &str) -> Option<PriceHit> {
+    // `to_ascii_lowercase` non cambia i byte multibyte (€,£,…) né la lunghezza → gli indici di `lower`
+    // combaciano con quelli di `html`, così possiamo estrarre il valore ORIGINALE (coi simboli).
+    let lower = html.to_ascii_lowercase();
+    let hay = lower.as_bytes();
+    let raw = html.as_bytes();
+    let needle = b"pricerange";
+    let mut i = 0usize;
+    while i + needle.len() <= hay.len() {
+        if &hay[i..i + needle.len()] != needle {
+            i += 1;
+            continue;
+        }
+        let start = i + needle.len();
+        let end = (start + 90).min(raw.len());
+        let window = String::from_utf8_lossy(&raw[start..end]);
+        if let Some(tok) = price_range_token(&window) {
+            if let Some((tier, eur, src)) = parse_price_range(&tok) {
+                return Some(PriceHit { tier, eur, src });
+            }
+        }
+        i = start;
+    }
+    None
+}
+
+// Restituisce le pagine (testo) PIÙ un'eventuale email di contatto e la fascia di prezzo trovate
+// sull'HTML grezzo.
+async fn gather_pages(
+    client: &reqwest::Client,
+    base_url: &str,
+) -> (Vec<(String, String)>, Option<String>, Option<PriceHit>) {
     let mut pages = Vec::new();
     let mut email: Option<String> = None;
+    let mut price: Option<PriceHit> = None;
     let base = match reqwest::Url::parse(base_url) {
         Ok(u) => u,
-        Err(_) => return (pages, email),
+        Err(_) => return (pages, email, price),
     };
     if robots_blocks_root(client, &base).await {
-        return (pages, email);
+        return (pages, email, price);
     }
     if let Some(home) = fetch(client, base.as_str()).await {
         email = email.or_else(|| find_email(&home));
+        price = price.or_else(|| extract_price(&home));
         let links = extract_family_links(&home, &base);
         pages.push((base.to_string(), html_to_text(&home)));
         for l in links.into_iter().take(2) {
             if let Some(h) = fetch(client, &l).await {
                 email = email.or_else(|| find_email(&h));
+                price = price.or_else(|| extract_price(&h));
                 pages.push((l, html_to_text(&h)));
             }
         }
     }
-    (pages, email)
+    (pages, email, price)
 }
 
 fn absent_signals() -> Vec<SignalResult> {
@@ -1155,14 +1393,14 @@ pub async fn enrich_hotel(app: tauri::AppHandle, args: EnrichArgs) -> Result<Enr
     let client = enrich_client();
     // Tetto DURO per hotel: qualunque sito che superi 16s viene abbandonato (pagine raccolte fin lì,
     // di norma vuote). Impedisce a un singolo sito lento di inchiodare un worker e "bloccare" la corsa.
-    let (pages, found_email) = match tokio::time::timeout(
+    let (pages, found_email, price) = match tokio::time::timeout(
         std::time::Duration::from_secs(16),
         gather_pages(client, &website),
     )
     .await
     {
         Ok(res) => res,
-        Err(_) => (Vec::new(), None), // timeout complessivo: trattato come sito non raggiungibile
+        Err(_) => (Vec::new(), None, None), // timeout complessivo: trattato come sito non raggiungibile
     };
     let website_ok = !pages.is_empty();
     let (score, signals) = score_pages(&pages);
@@ -1186,6 +1424,10 @@ pub async fn enrich_hotel(app: tauri::AppHandle, args: EnrichArgs) -> Result<Enr
         // email trovata sul sito → la salviamo se non c'era già (dato reale, per il CRM).
         if let Some(em) = &found_email {
             let _ = crate::db::set_email_if_absent(&conn, &args.osm_type, args.osm_id, em);
+        }
+        // fascia di prezzo pubblicata dal sito (dato reale, con prova) → la salviamo.
+        if let Some(p) = &price {
+            let _ = crate::db::set_price(&conn, &args.osm_type, args.osm_id, p.tier, p.eur, &p.src);
         }
     }
 
@@ -1251,19 +1493,20 @@ pub async fn enrich_batch(app: tauri::AppHandle, limit: Option<i64>) -> Result<E
     for (ot, oid, website) in items {
         handles.push(tauri::async_runtime::spawn(async move {
             let client = enrich_client();
-            let (pages, email) = match tokio::time::timeout(
+            let (pages, email, price) = match tokio::time::timeout(
                 Duration::from_secs(16),
                 gather_pages(client, &website),
             )
             .await
             {
                 Ok(res) => res,
-                Err(_) => (Vec::new(), None),
+                Err(_) => (Vec::new(), None, None),
             };
             let website_ok = !pages.is_empty();
             let pages_fetched = pages.len() as u32;
             let (score, signals) = score_pages(&pages);
-            (ot, oid, website_ok, pages_fetched, score, signals, email)
+            let price = price.map(|p| (p.tier, p.eur, p.src)); // appiattisci PriceHit (PriceHit non è Send-trasparente nel tuple)
+            (ot, oid, website_ok, pages_fetched, score, signals, email, price)
         }));
     }
     let mut scored = Vec::new();
@@ -1277,7 +1520,7 @@ pub async fn enrich_batch(app: tauri::AppHandle, limit: Option<i64>) -> Result<E
     let remaining: i64 = {
         let mut conn = crate::db::open_db(&app)?;
         let tx = conn.transaction().map_err(|e| e.to_string())?;
-        for (ot, oid, website_ok, pages_fetched, score, signals, email) in &scored {
+        for (ot, oid, website_ok, pages_fetched, score, signals, email, price) in &scored {
             let breakdown = serde_json::to_string(signals).unwrap_or_else(|_| "[]".to_string());
             let enrichment = serde_json::json!({ "website_ok": website_ok, "pages_fetched": pages_fetched }).to_string();
             tx.execute(
@@ -1292,6 +1535,13 @@ pub async fn enrich_batch(app: tauri::AppHandle, limit: Option<i64>) -> Result<E
                     rusqlite::params![ot, oid, em],
                 );
             }
+            // fascia di prezzo dal sito (dato reale, con prova): la scriviamo dove l'abbiamo trovata.
+            if let Some((tier, eur, src)) = price {
+                let _ = tx.execute(
+                    "UPDATE hotels SET price_tier=?3, price_eur=?4, price_src=?5 WHERE osm_type=?1 AND osm_id=?2",
+                    rusqlite::params![ot, oid, tier, eur, src],
+                );
+            }
         }
         tx.commit().map_err(|e| e.to_string())?;
         conn.query_row(
@@ -1304,7 +1554,7 @@ pub async fn enrich_batch(app: tauri::AppHandle, limit: Option<i64>) -> Result<E
 
     let results = scored
         .into_iter()
-        .map(|(ot, oid, website_ok, pages_fetched, score, signals, _)| EnrichOne {
+        .map(|(ot, oid, website_ok, pages_fetched, score, signals, _, _)| EnrichOne {
             id: format!("{ot}/{oid}"),
             website_ok,
             pages_fetched,
@@ -1348,6 +1598,81 @@ mod tests {
         assert_eq!(parse_stars(Some("3-4"), false), (Some(3), false)); // prende la prima cifra
         assert_eq!(parse_stars(Some("boutique"), false), (None, false));
         assert_eq!(parse_stars(None, true), (None, true)); // tag luxury=yes senza stelle
+    }
+
+    #[test]
+    fn extract_price_reads_schema_pricerange() {
+        // Simboli di valuta: "€€€" → livello 3, nessun numero.
+        let h = r#"<script type="application/ld+json">{"@type":"Hotel","priceRange":"€€€"}</script>"#;
+        let p = extract_price(h).expect("priceRange simboli");
+        assert_eq!(p.tier, 3);
+        assert_eq!(p.eur, None);
+
+        // Microdata con $$ → livello 2.
+        let h2 = r#"<span itemprop="priceRange" content="$$">prezzi</span>"#;
+        assert_eq!(extract_price(h2).unwrap().tier, 2);
+
+        // Fascia numerica senza simbolo → assume EUR; low=120 → livello 3.
+        let h3 = r#"{"priceRange":"120-300"}"#;
+        let p3 = extract_price(h3).unwrap();
+        assert_eq!(p3.tier, 3);
+        assert_eq!(p3.eur, Some(120));
+
+        // Fascia con simbolo €, prende il minimo (90) → livello 2.
+        let h4 = r#"<div data-pricerange=": €90 - €140 a notte">"#;
+        let p4 = extract_price(h4).unwrap();
+        assert_eq!(p4.eur, Some(90));
+        assert_eq!(p4.tier, 2);
+
+        // USD 250 → ~230 EUR → livello 4.
+        let h5 = r#""priceRange":"USD 250""#;
+        assert_eq!(extract_price(h5).unwrap().tier, 4);
+
+        // Separatore migliaia: "€1.200" → 1200 EUR → livello 5.
+        let h6 = r#""priceRange":"€1.200""#;
+        let p6 = extract_price(h6).unwrap();
+        assert_eq!(p6.eur, Some(1200));
+        assert_eq!(p6.tier, 5);
+
+        // Assente / vuoto → None (la UI userà la stima).
+        assert!(extract_price("<html>nessun prezzo qui</html>").is_none());
+        assert!(extract_price(r#"<x itemprop="priceRange" content="">"#).is_none());
+    }
+
+    // Verifica + tempo della ri-scansione STELLE concorrente sul DB REALE.
+    // `cargo test -- --ignored live_backfill_stars --nocapture`
+    #[test]
+    #[ignore]
+    fn live_backfill_stars() {
+        use rusqlite::Connection;
+        let home = std::env::var("HOME").unwrap();
+        let path = format!("{home}/Library/Application Support/co.kidotel.radar/kidotel-radar.sqlite");
+        tauri::async_runtime::block_on(async {
+            let conn = Connection::open(&path).unwrap();
+            conn.busy_timeout(Duration::from_secs(30)).unwrap();
+            let items: Vec<(String, i64)> = {
+                let mut stmt = conn
+                    .prepare("SELECT osm_type, osm_id FROM hotels WHERE stars IS NULL ORDER BY osm_id LIMIT 700")
+                    .unwrap();
+                stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?))).unwrap().map(|x| x.unwrap()).collect()
+            };
+            if items.is_empty() {
+                println!("nessun hotel da classificare (tutte le stelle già fatte)");
+                return;
+            }
+            let t0 = Instant::now();
+            let (found, covered) = fetch_stars_for(&items).await.unwrap();
+            let secs = t0.elapsed().as_secs_f64();
+            let with = items.iter().filter(|(t, i)| {
+                found.get(&format!("{t}/{i}")).map(|(s, _)| s.is_some()).unwrap_or(false)
+            }).count();
+            println!(
+                "STELLE: {} hotel chiesti, {} coperti, {} con classificazione in {:.1}s (≈ {:.0} hotel/s)",
+                items.len(), covered.len(), with, secs, covered.len() as f64 / secs.max(0.001)
+            );
+            assert!(!covered.is_empty(), "nessuna risposta Overpass");
+            assert!(secs < 90.0, "troppo lento: {secs:.1}s (atteso ben meno con la rotazione endpoint)");
+        });
     }
 
     #[test]
@@ -1523,9 +1848,9 @@ mod tests {
                 handles.push(tauri::async_runtime::spawn(async move {
                     let client = enrich_client();
                     let start = Instant::now();
-                    let (pages, _email) = match tokio::time::timeout(Duration::from_secs(16), gather_pages(client, &website)).await {
+                    let (pages, _email, _price) = match tokio::time::timeout(Duration::from_secs(16), gather_pages(client, &website)).await {
                         Ok(r) => r,
-                        Err(_) => (Vec::new(), None),
+                        Err(_) => (Vec::new(), None, None),
                     };
                     let (score, _signals) = score_pages(&pages);
                     (ot, oid, pages.len(), score, start.elapsed().as_secs_f64(), website)
@@ -1580,7 +1905,7 @@ mod tests {
             println!("dead host: elapsed={:?} timed_out={}", elapsed, res.is_err());
             // deve terminare per connect_timeout (~6s per fetch), MAI vicino/oltre i 16s
             assert!(elapsed < Duration::from_secs(15), "ha quasi raggiunto il tetto: {:?}", elapsed);
-            if let Ok((pages, _)) = res {
+            if let Ok((pages, _, _)) = res {
                 assert!(pages.is_empty(), "host morto non dovrebbe dare pagine");
             }
         });
@@ -1620,14 +1945,15 @@ mod tests {
         tauri::async_runtime::block_on(async {
             let c = http_client().unwrap();
             for (name, url) in sites {
-                let (pages, email) = gather_pages(&c, url).await;
+                let (pages, email, price) = gather_pages(&c, url).await;
                 let chars: usize = pages.iter().map(|(_, t)| t.chars().count()).sum();
                 let (score, signals) = score_pages(&pages);
                 let present: Vec<&str> =
                     signals.iter().filter(|s| s.present).map(|s| s.key.as_str()).collect();
+                let price_s = price.map(|p| format!("liv.{} {:?} «{}»", p.tier, p.eur, p.src));
                 println!(
-                    "{:<30} score={:>3} pagine={} testo={:>6} email={:?} segnali={:?}",
-                    name, score, pages.len(), chars, email, present
+                    "{:<30} score={:>3} pagine={} testo={:>6} email={:?} prezzo={:?} segnali={:?}",
+                    name, score, pages.len(), chars, email, price_s, present
                 );
                 std::thread::sleep(std::time::Duration::from_millis(500));
             }

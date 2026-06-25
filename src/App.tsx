@@ -66,6 +66,9 @@ type Hotel = {
   lon: number;
   stars?: number | null;
   luxury?: number | null;
+  price_tier?: number | null; // fascia di costo REALE dal sito (priceRange) 1–5
+  price_eur?: number | null;  // prezzo a notte (≈ EUR) quando il sito lo pubblica
+  price_src?: string | null;  // prova: il valore priceRange citato dal sito
 };
 
 type DiscoverResult = { area_label: string; count: number; hotels: Hotel[] };
@@ -94,6 +97,9 @@ type HotelRow = {
   email_status: string | null;
   stars: number | null;
   luxury: number | null;
+  price_tier: number | null;
+  price_eur: number | null;
+  price_src: string | null;
 };
 
 type SignalResult = {
@@ -147,6 +153,24 @@ const COUNTRY_VALUE: Record<string, number> = {
 };
 const COUNTRY_VALUE_DEFAULT = 0.9;
 const ARCHIVE_PAGE = 5000; // righe per pagina dell'archivio (paginazione dell'elenco piatto)
+
+// Fascia di costo $ → $$$$$ (1–5). COMBINATO: se il sito pubblica una fascia di prezzo (schema.org
+// priceRange, salvata in price_tier) usiamo quel dato REALE; altrimenti una STIMA derivata da segnali
+// reali — stelle ★ (da OSM) + lusso + indice costo-vita del paese (COUNTRY_VALUE). Niente prezzo
+// inventato: la stima è dichiarata come tale (badge più tenue + tooltip). Restituisce null quando non
+// c'è alcun segnale (né prezzo reale, né stelle, né paese noto) per non mostrare un livello a caso.
+function priceTierOf(h: Hotel): { tier: number; isReal: boolean; eur: number | null; src: string | null } | null {
+  const real = h.price_tier && h.price_tier >= 1 && h.price_tier <= 5 ? h.price_tier : null;
+  if (real) return { tier: real, isReal: true, eur: h.price_eur ?? null, src: h.price_src ?? null };
+  const stars = h.stars && h.stars >= 1 ? h.stars : null;
+  const lux = !!h.luxury;
+  const cv = h.country ? COUNTRY_VALUE[h.country] : undefined;
+  if (!stars && cv === undefined && !lux) return null; // nessun segnale → niente stima
+  const base = lux ? 5 : stars ?? 3;
+  const adj = (cv ?? COUNTRY_VALUE_DEFAULT) - 1.0; // paese caro spinge su, economico spinge giù
+  const tier = Math.max(1, Math.min(5, Math.round(base + adj * 1.5)));
+  return { tier, isReal: false, eur: null, src: null };
+}
 
 // Continente per paese (nomi come da pycountry, quelli salvati nel DB). Per raggruppare la Copertura.
 const CONTINENT: Record<string, string> = {
@@ -229,6 +253,7 @@ function hotelRowToHotel(r: HotelRow): Hotel {
     city: r.city, country: r.country, region: r.region, province: r.province,
     website: r.website, phone: r.phone, email: r.email, email_status: r.email_status,
     source: r.source || "OpenStreetMap", lat: r.lat, lon: r.lon, stars: r.stars, luxury: r.luxury,
+    price_tier: r.price_tier, price_eur: r.price_eur, price_src: r.price_src,
   };
 }
 function breakdownToSc(r: HotelRow): EnrichResult | undefined {
@@ -318,6 +343,7 @@ export default function App() {
         city: r.city, country: r.country, region: r.region, province: r.province,
         website: r.website, phone: r.phone, email: r.email, email_status: r.email_status,
         source: r.source || "OpenStreetMap", lat: r.lat, lon: r.lon, stars: r.stars, luxury: r.luxury,
+        price_tier: r.price_tier, price_eur: r.price_eur, price_src: r.price_src,
       });
       const status = (r.contact_status as ContactStatus) || "da_contattare";
       ct[`${r.osm_type}/${r.osm_id}`] = { status, note: r.contact_note || "" };
@@ -1196,6 +1222,19 @@ kidotel.co`;
                   <span className="cell-loc-sep"> · </span>
                 </span>
               ) : null}
+              {(() => {
+                const p = priceTierOf(h);
+                if (!p) return null;
+                const title = p.isReal
+                  ? `${t("price.level")} ${p.tier}/5 · ${t("price.fromSite")}${p.eur ? ` (≈€${p.eur} ${t("price.perNight")})` : ""}${p.src ? ` — «${p.src}»` : ""}`
+                  : `${t("price.level")} ${p.tier}/5 · ${t("price.estimate")}`;
+                return (
+                  <span className={"price " + (p.isReal ? "real" : "est")} title={title} aria-label={title}>
+                    {"€".repeat(p.tier)}<span className="price-empty">{"€".repeat(5 - p.tier)}</span>
+                    <span className="cell-loc-sep"> · </span>
+                  </span>
+                );
+              })()}
               {locationOf(h)}
             </span>
           </span>

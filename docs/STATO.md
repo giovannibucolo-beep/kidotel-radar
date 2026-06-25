@@ -2,8 +2,16 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.19` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.20` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-25
+
+## Fatto v0.8.20 (2026-06-25) — fascia di costo €→€€€€€ + stelle ultra-veloci + .exe automatica
+- **Costo €→€€€€€ ($→$$$$$)**: indicatore a 5 livelli per hotel. COMBINATO: `priceRange` schema.org dal sito = REALE (con prova nel tooltip + prezzo/notte), altrimenti STIMA da stelle+lusso+indice-paese. Niente prezzi inventati. Rust `extract_price` (+colonne `price_tier/eur/src`, `set_price`), frontend `priceTierOf`+badge, i18n `price.*` it/en/ru, sezione Guida.
+- **Stelle ultra-veloci**: `fetch_stars_for` concorrente con ROTAZIONE endpoint (≤4 blocchi, uno per mirror, una ondata) + client Overpass condiviso + failover. **≈3,8× più veloce** (live: 700 in 42s, ~17/s). Blocchi falliti ritentati (no falso «senza stelle»). Default batch 700.
+- **.exe a ogni release**: `release.mjs` ora committa (msg dal CHANGELOG) + spinge branch+tag → CI costruisce .exe+.dmg in bozza e ripulisce le bozze vecchie. Best-effort (serve remote + CI attiva: repo pubblico o billing).
+- **Fix**: `applyRows` non passava le colonne prezzo → reale assente nell'Elenco. Allineato.
+- Verificato: cargo 13/13 + live (stars 42s, price Schwarzenstein «€€€€»→liv.4); tsc+vite build ok; anteprima (mock) badge €→€€€€€ reale/stima leggibile, tooltip IT/EN/RU, sezione Guida, 0 errori.
+- **In sospeso**: Windows (#12) la .exe parte solo con repo PUBBLICO o billing GitHub attivo (l'utente ha scelto «rendi pubblico» — verificata la history pulita: nessun dato/segreto). Presentazione HTML (#13).
 
 ## Fatto v0.8.19 (2026-06-25) — manuale completo in russo
 - Guida/manuale **interamente in russo**: 11 sezioni Guida + voci NEWS tradotte (workflow multi-agente; 22+16 stringhe), riconciliate con i nomi reali dei pulsanti UI (Измерить, Завершить 100%, Остановить, Люкс, Написать email, Оценить family-fit, По странам). Niente più ripiego inglese per `ru`.

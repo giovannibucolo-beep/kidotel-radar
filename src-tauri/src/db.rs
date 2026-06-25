@@ -73,6 +73,9 @@ fn migrate(conn: &Connection) {
         "email_checked INTEGER", // 1 = email già cercata (harvest-emails.mjs, per la ripresa)
         "stars INTEGER",         // classificazione internazionale 1–5 (dal tag OSM `stars`)
         "luxury INTEGER",        // 1 = lusso (5 stelle Superior / luxury=yes)
+        "price_tier INTEGER",    // fascia di costo REALE dal sito (schema.org priceRange) 1–5 ($→$$$$$)
+        "price_eur INTEGER",     // prezzo a notte (≈ EUR) quando il sito pubblica una fascia numerica
+        "price_src TEXT",        // prova: il valore priceRange citato verbatim dal sito
     ] {
         let _ = conn.execute(&format!("ALTER TABLE hotels ADD COLUMN {col}"), []);
     }
@@ -331,6 +334,16 @@ pub fn set_email_if_absent(conn: &Connection, osm_type: &str, osm_id: i64, email
     Ok(())
 }
 
+// Fascia di prezzo REALE trovata sul sito (schema.org priceRange), con la sua prova citata.
+pub fn set_price(conn: &Connection, osm_type: &str, osm_id: i64, tier: i64, eur: Option<i64>, src: &str) -> Result<(), String> {
+    conn.execute(
+        "UPDATE hotels SET price_tier = ?3, price_eur = ?4, price_src = ?5 WHERE osm_type = ?1 AND osm_id = ?2",
+        params![osm_type, osm_id, tier, eur, src],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 pub fn update_enrichment(
     conn: &Connection,
     osm_type: &str,
@@ -385,6 +398,9 @@ pub struct HotelRow {
     pub email_status: Option<String>,
     pub stars: Option<i64>,
     pub luxury: Option<i64>,
+    pub price_tier: Option<i64>,
+    pub price_eur: Option<i64>,
+    pub price_src: Option<String>,
 }
 
 fn row_to_hotel(r: &rusqlite::Row) -> rusqlite::Result<HotelRow> {
@@ -411,12 +427,16 @@ fn row_to_hotel(r: &rusqlite::Row) -> rusqlite::Result<HotelRow> {
         email_status: r.get(19)?,
         stars: r.get(20)?,
         luxury: r.get(21)?,
+        price_tier: r.get(22)?,
+        price_eur: r.get(23)?,
+        price_src: r.get(24)?,
     })
 }
 
 const HOTEL_COLS: &str = "osm_type, osm_id, name, city, country, website, phone, lat, lon, source,
     family_fit_score, score_breakdown, enrichment, region, province,
-    email, contact_status, contact_note, contact_updated, email_status, stars, luxury";
+    email, contact_status, contact_note, contact_updated, email_status, stars, luxury,
+    price_tier, price_eur, price_src";
 
 // Cerca/elenca dall'archivio. `search` filtra per nome/città/provincia/regione/paese (tutti i record).
 #[tauri::command]

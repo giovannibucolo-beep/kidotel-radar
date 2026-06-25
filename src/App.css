@@ -486,6 +486,12 @@ body { margin: 0; background: var(--bg); }
 .cell-loc { font-weight: 400; font-size: 12px; color: var(--text-2); }
 .stars { color: #e8930e; letter-spacing: 0.5px; font-size: 11px; }
 .lux { margin-left: 5px; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #7a4d05; background: #ffe9c9; border-radius: 999px; padding: 1px 6px; vertical-align: 1px; }
+/* Fascia di costo €→€€€€€ (1–5): toni neutri (ink/grigio), distinti dall'ambra delle stelle.
+   .real = dato dal sito (più marcato); .est = stima da stelle+paese (più tenue). */
+.price { font-size: 11px; letter-spacing: 1.5px; cursor: help; }
+.price.real { color: var(--text-1); font-weight: 700; }
+.price.est { color: var(--text-2); font-weight: 600; }
+.price .price-empty { color: var(--text-3); opacity: 0.28; font-weight: 400; }
 .cell-loc-sep { color: var(--text-3); }
 .cell-site a { color: var(--brand-strong); text-decoration: none; }
 .cell-site a:hover { text-decoration: underline; }
