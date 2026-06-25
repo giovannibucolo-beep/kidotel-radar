@@ -2,8 +2,11 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.28` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.29` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-25
+
+## Fatto v0.8.29 (2026-06-25) — fix «Cerca su» Expedia/Hotels.com (hotel, non solo località)
+- `destination=` di Expedia/Hotels.com trattava il testo come località → mostrava la zona, non l'hotel. Ora cercano per NOME via `site:expedia.com`/`site:hotels.com` (Google) → atterra sulla scheda hotel. Booking/Google Hotels/TripAdvisor restano diretti. Verificato href in anteprima; tsc ok.
 
 ## Fatto v0.8.28 (2026-06-25) — «Cerca su» le OTA (ricerca pre-compilata)
 - Espandi riga hotel (e CRM) → pulsanti «Cerca su» Google Hotels/Booking/Expedia/Hotels.com/TripAdvisor con ricerca pre-compilata (nome+città+paese). È una RICERCA, non la pagina esatta (quella = API/affiliazione, roadmap v0.5): nessun ID inventato. Riga sempre espandibile. `OTA_SITES`+`OtaLinks`, i18n `ota.find` it/en/ru, CSS `.ota-*`.

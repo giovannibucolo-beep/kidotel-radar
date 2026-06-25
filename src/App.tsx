@@ -392,10 +392,15 @@ const extLink = (url: string) => (e: { preventDefault: () => void }) => { e.prev
 // pagina esatta dell'hotel (quella richiede l'ID interno via API/affiliazione → roadmap). È una
 // ricerca: l'utente sceglie il risultato. Nessun ID inventato. Google Hotels aggrega i prezzi OTA.
 const OTA_SITES: { name: string; url: (q: string) => string }[] = [
+  // Google Hotels: aggregatore, gestisce bene il NOME hotel → mostra la scheda esatta + i prezzi OTA.
   { name: "Google Hotels", url: (q) => `https://www.google.com/travel/search?q=${q}` },
+  // Booking / TripAdvisor: la loro ricerca matcha il nome dell'hotel → ok diretta.
   { name: "Booking", url: (q) => `https://www.booking.com/searchresults.html?ss=${q}` },
-  { name: "Expedia", url: (q) => `https://www.expedia.com/Hotel-Search?destination=${q}` },
-  { name: "Hotels.com", url: (q) => `https://www.hotels.com/Hotel-Search?destination=${q}` },
+  // Expedia / Hotels.com: il loro `destination=` tratta il testo come LOCALITÀ (mostrava solo la zona,
+  // non l'hotel). Li facciamo cercare PER NOME sulla piattaforma via ricerca mirata (site:) → atterra
+  // sulla scheda dell'hotel.
+  { name: "Expedia", url: (q) => `https://www.google.com/search?q=${q}%20site%3Aexpedia.com` },
+  { name: "Hotels.com", url: (q) => `https://www.google.com/search?q=${q}%20site%3Ahotels.com` },
   { name: "TripAdvisor", url: (q) => `https://www.tripadvisor.com/Search?q=${q}` },
 ];
 const otaQuery = (h: { name: string; city?: string | null; country?: string | null }) =>

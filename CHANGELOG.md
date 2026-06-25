@@ -2,6 +2,12 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.29] — 2026-06-25
+### Corretto — «Cerca su» Expedia/Hotels.com trovava solo la località, non l'hotel
+- Il parametro `destination=` di Expedia e Hotels.com (stesso gruppo) interpreta il testo come **località** → mostrava gli hotel della zona, non quello cercato. Ora i due pulsanti cercano l'hotel **per nome sulla piattaforma** via ricerca mirata (`site:expedia.com` / `site:hotels.com`) → si atterra sulla scheda dell'hotel. Google Hotels, Booking e TripAdvisor restano diretti (gestiscono già il nome).
+### Verificato
+- `tsc` pulito; anteprima: href Expedia/Hotels.com ora `…/search?q=Hotel%20…%20site%3Aexpedia.com`; 0 errori.
+
 ## [0.8.28] — 2026-06-25
 ### Aggiunto — «Cerca su» le OTA (Booking, Expedia, Hotels.com, Google Hotels, TripAdvisor)
 - Espandendo la riga di un hotel (e nel **CRM**) compaiono i pulsanti **«Cerca su»** che aprono la **ricerca pre-compilata** (nome + città + paese) sulle principali OTA: Google Hotels (aggrega i prezzi), Booking, Expedia, Hotels.com, TripAdvisor. Si apre nel browser di sistema.
