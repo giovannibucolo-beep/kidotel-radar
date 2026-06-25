@@ -546,6 +546,7 @@ export default function App() {
   const [infoData, setInfoData] = useState<InfoData | null>(null);
   const [infoOpts, setInfoOpts] = useState<InfoOpts>(DEFAULT_INFO_OPTS);
   const [infoBusy, setInfoBusy] = useState(false);
+  const [reportBusy, setReportBusy] = useState(false);
   const erValue = settings.erValue, erComm = settings.erComm, erVolume = settings.erVolume;
   function updateSettings(p: Partial<Settings>) {
     setSettings((s) => {
@@ -945,6 +946,7 @@ export default function App() {
       contactable: 25040, famContactable: 9860, erTotalFamily: 4831200,
     };
     (window as unknown as { __infoHtml?: string }).__infoHtml = buildInfographicHtml(mock, infoOpts);
+    (window as unknown as { __insightsHtml?: string }).__insightsHtml = buildInsightsHtml(mock.stats, mock.hist, mock.topCountries.map((c) => ({ country: c.country, total: c.total, strong: c.family })) as CoverageRow[]);
     (window as unknown as { __scoreHeat?: typeof scoreHeat }).__scoreHeat = scoreHeat;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [infoOpts, lang, settings.familyThreshold]);
@@ -1412,6 +1414,90 @@ export default function App() {
     } catch (e) { setError(String(e)); }
   }
 
+  // «Da fare ora» #2 del piano economico: REPORT INSIGHT vendibile. Solo dati AGGREGATI (mai righe-record)
+  // → è un Produced Work (ODbL §4.5b: niente share-alike) e, essendo statistiche anonime, è fuori dal GDPR.
+  // NIENTE dati interni (funnel CRM, valore atteso): è la versione esterna/commerciale dell'infografica.
+  async function openInsightsReport() {
+    if (reportBusy) return;
+    setReportBusy(true);
+    try {
+      const thr = settings.familyThreshold;
+      const [stats, hist, cov] = await Promise.all([
+        invoke<ScoreStats>("score_stats", { threshold: thr }),
+        invoke<number[]>("score_histogram"),
+        invoke<CoverageRow[]>("coverage_by_country", { threshold: thr }),
+      ]);
+      await invoke("open_report", { html: buildInsightsHtml(stats, hist, cov) });
+    } catch (e) { setError(String(e)); }
+    finally { setReportBusy(false); }
+  }
+
+  function buildInsightsHtml(stats: ScoreStats, hist: number[], cov: CoverageRow[]): string {
+    const esc = (s: unknown) => String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] as string));
+    const date = new Date().toLocaleDateString(lang);
+    const nf = (n: number) => n.toLocaleString(lang);
+    const thr = settings.familyThreshold;
+    const countries = cov.filter((c) => c.country && c.country !== "(sconosciuto)");
+    const famPct = stats.scored ? Math.round((stats.strong / stats.scored) * 100) : 0;
+    const top = [...countries].sort((a, b) => b.strong - a.strong).slice(0, 15);
+    const cont: Record<string, { total: number; family: number }> = {};
+    for (const c of countries) { const k = CONTINENT[c.country] ?? "other"; (cont[k] ??= { total: 0, family: 0 }); cont[k].total += c.total; cont[k].family += c.strong; }
+    const continents = CONTINENT_ORDER.filter((k) => cont[k]?.total).map((k) => ({ key: k, total: cont[k].total, family: cont[k].family }));
+
+    const kpi = (val: string, label: string, acc = false) => `<div class="kpi${acc ? " kpi-acc" : ""}"><div class="kpi-v">${esc(val)}</div><div class="kpi-l">${esc(label)}</div></div>`;
+    const histMax = Math.max(1, ...hist);
+    const histBlock = `<section class="card"><h3>${esc(t("info.s.dist"))}</h3><div class="hist">${hist.map((n, i) => {
+      const lo = i * 10, hi = i === 9 ? 100 : i * 10 + 9; const h = Math.round((n / histMax) * 120); const fam = lo >= thr;
+      return `<div class="hb"><div class="hb-bar${fam ? " fam" : ""}" style="height:${h}px"></div><div class="hb-n">${n ? nf(n) : ""}</div><div class="hb-x">${lo}–${hi}</div></div>`;
+    }).join("")}</div><div class="legend"><span class="sw fam"></span>${esc(t("info.l.family"))} (≥${thr}) · <span class="sw"></span>${esc(t("info.l.other"))}</div></section>`;
+    const tMax = Math.max(1, ...top.map((c) => c.strong));
+    const topBlock = !top.length ? "" : `<section class="card"><h3>${esc(t("insights.s.top"))}</h3><div class="bars">${top.map((c) => `<div class="bar-row"><div class="bar-lab">${esc(c.country)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round((c.strong / tMax) * 100)}%"></div></div><div class="bar-val">${nf(c.strong)} / ${nf(c.total)}</div></div>`).join("")}</div></section>`;
+    const coMax = Math.max(1, ...continents.map((c) => c.total));
+    const contBlock = !continents.length ? "" : `<section class="card"><h3>${esc(t("info.s.conts"))}</h3><div class="bars">${continents.map((c) => `<div class="bar-row"><div class="bar-lab">${esc(t(("cont." + c.key) as TKey))}</div><div class="bar-track"><div class="bar-fill alt" style="width:${Math.round((c.total / coMax) * 100)}%"></div></div><div class="bar-val">${nf(c.total)} · <b>${nf(c.family)}</b></div></div>`).join("")}</div><div class="legend">${esc(t("info.l.totfam"))}</div></section>`;
+
+    return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kidotel — ${esc(t("insights.title"))}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4 portrait; margin: 14mm; }
+  :root { --ink:#222223; --peach:#ffc27b; --amber:#ef9f27; --deep:#925a0c; --mut:#6b6b66; --line:#e6e4de; --soft:#fff3e4; }
+  * { box-sizing:border-box; } body { font-family:"Manrope",-apple-system,"Segoe UI",Arial,sans-serif; color:var(--ink); margin:0; padding:28px; background:#fff; }
+  h1,h3 { font-family:"Sora",-apple-system,"Segoe UI",Arial,sans-serif; }
+  .head { display:flex; align-items:center; gap:16px; border-bottom:3px solid var(--peach); padding-bottom:14px; margin-bottom:8px; }
+  .head .divider { width:1px; height:34px; background:var(--line); } .head h1 { font-size:19px; margin:0; font-weight:700; } .head .sub { color:var(--mut); font-size:13px; margin-top:2px; }
+  .intro { font-size:12.5px; color:var(--mut); margin:10px 0 18px; max-width:70ch; }
+  .grid { display:grid; gap:14px; } .kpis { grid-template-columns:repeat(4,1fr); margin-bottom:18px; }
+  .kpi { border:1px solid var(--line); border-radius:14px; padding:16px; text-align:center; } .kpi-acc { background:var(--soft); border-color:var(--peach); }
+  .kpi-v { font-family:"Sora",sans-serif; font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; } .kpi-l { font-size:12px; color:var(--mut); margin-top:4px; }
+  .card { border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:16px; break-inside:avoid; } .card h3 { margin:0 0 12px; font-size:15px; color:var(--deep); }
+  .hist { display:flex; align-items:flex-end; gap:8px; height:150px; padding-top:10px; } .hb { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:4px; }
+  .hb-bar { width:100%; background:#dcd8d0; border-radius:6px 6px 0 0; min-height:2px; } .hb-bar.fam { background:var(--amber); } .hb-n,.hb-x { font-size:10px; color:var(--mut); font-variant-numeric:tabular-nums; }
+  .legend { font-size:11.5px; color:var(--mut); margin-top:10px; } .sw { display:inline-block; width:10px; height:10px; border-radius:3px; background:#dcd8d0; vertical-align:middle; margin:0 4px; } .sw.fam { background:var(--amber); }
+  .bars { display:flex; flex-direction:column; gap:8px; } .bar-row { display:grid; grid-template-columns:150px 1fr 110px; align-items:center; gap:10px; } .bar-lab { font-size:12.5px; }
+  .bar-track { background:#f0efe9; border-radius:6px; height:14px; overflow:hidden; } .bar-fill { height:100%; background:var(--amber); border-radius:6px; } .bar-fill.alt { background:var(--peach); }
+  .bar-val { font-size:12px; color:var(--mut); text-align:right; font-variant-numeric:tabular-nums; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .foot { margin-top:14px; font-size:11px; color:var(--mut); border-top:1px solid var(--line); padding-top:10px; line-height:1.6; }
+  .foot a { color:var(--deep); }
+  .noprint { margin:0 0 16px; } .pbtn { font:inherit; font-weight:600; font-size:13px; padding:9px 18px; border-radius:8px; border:none; background:var(--ink); color:#fff; cursor:pointer; }
+  @media print { .noprint { display:none; } body { padding:0; } }
+</style></head><body>
+  <div class="noprint"><button class="pbtn" onclick="window.print()">${esc(t("info.print"))}</button></div>
+  <div class="head"><div class="mark">${wordmarkSvg(30, "#222223")}</div><div class="divider"></div><div><h1>${esc(t("insights.title"))}</h1><div class="sub">${date}</div></div></div>
+  <p class="intro">${esc(t("insights.intro"))}</p>
+  <section class="grid kpis">
+    ${kpi(nf(stats.total), t("insights.k.analyzed"))}
+    ${kpi(nf(stats.strong), t("insights.k.family") + " (≥" + thr + ")", true)}
+    ${kpi(famPct + "%", t("insights.k.familypct"))}
+    ${kpi(nf(countries.length), t("insights.k.countries"))}
+  </section>
+  ${histBlock}
+  <div class="two">${topBlock}${contBlock}</div>
+  <div class="foot">${esc(t("insights.method"))}<br>${esc(t("insights.aggregated"))} · © OpenStreetMap contributors (<a href="https://www.openstreetmap.org/copyright">ODbL</a>) · ${esc(t("footer.copyright"))} · Kidotel Radar ${APP_VERSION}</div>
+</body></html>`;
+  }
+
   function buildReportHtml(): string {
     const esc = (s: unknown) =>
       String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] as string));
@@ -1658,6 +1744,9 @@ export default function App() {
               <div className="menu-pop" role="menu">
                 <div className="menu-group">{t("xp.title")}</div>
                 <button role="menuitem" onClick={() => { setDataMenuOpen(false); setExportSel(DEFAULT_EXPORT_SEL); setOverlay("export"); }}><Icon name="download" size={15} /> {t("xp.open")}</button>
+                <div className="menu-sep" />
+                <div className="menu-group">{t("report.group")}</div>
+                <button role="menuitem" disabled={reportBusy} onClick={() => { setDataMenuOpen(false); void openInsightsReport(); }}><Icon name="chart" size={15} /> {reportBusy ? t("info.loading") : t("report.menu")}</button>
                 <div className="menu-sep" />
                 <div className="menu-group">{t("data.title")}</div>
                 <button role="menuitem" onClick={() => { setDataMenuOpen(false); exportBackup(); }}><Icon name="download" size={15} /> {t("backup.export")}</button>

@@ -2,8 +2,13 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.32` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.33` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-25
+
+## Fatto v0.8.33 (2026-06-25) — Report di mercato vendibile (uso economico dato, «da fare ora» #2)
+- Nuovo **Report insight** (menu Dati): HTML stampabile con SOLO aggregati (analizzati, family, distribuzione, top destinazioni, continenti) → opera derivata/Produced Work (ODbL §4.5b, no share-alike; statistiche anonime = fuori GDPR), con attribuzione OSM + «non un database». Niente schede-hotel, niente dati interni (funnel/valore). Riusa score_stats/score_histogram/coverage_by_country. Implementa la «da fare ora» #2 del piano economico; la #1 (SEO/classifiche) è coperta dal Feed sito (v0.8.32).
+- Verificato: tsc pulito, parità 297×3, anteprima (menu + report renderizzato on-brand, screenshot), controlli strutturali (attribuzione OSM, no contatti, no dati interni), 0 errori console.
+- **In sospeso**: lato kidotel.com import feed + endpoint /claim (Django); altre vie economiche (metodologia/API, Kidotel Certified, outreach) = fasi successive del piano.
 
 ## Fatto v0.8.32 (2026-06-25) — Fase 1 verso kidotel.co (feed sito + link claim + outreach trilingue)
 - Implementata la **Fase 1** del piano operativo (vedi `presentazione/kidotel-piano-operativo.html`): export **«Feed sito»** Produced-Work per kidotel.co (identità+punteggio+fatti+prova breve con fonte+claim_url+links booking(aid)/mappa+attribuzione OSM; NIENTE contatti privati), **link di claim per-hotel** `{base}/claim/{osm_type}/{osm_id}?lang&ff` (base configurabile in Impostazioni→Integrazione kidotel.co), **ID affiliato Booking (aid)** opzionale, **outreach CRM trilingue** (IT/EN/RU) col link di claim.

@@ -2,6 +2,14 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.33] — 2026-06-25
+### Aggiunto — «Report di mercato» vendibile (monetizzazione «da fare ora» #2)
+- Nuovo **Report insight** (menu Dati → «Report insight») — documento HTML stampabile/inviabile con **SOLO statistiche aggregate**: hotel analizzati, hotel per famiglie (≥soglia), quota family sui valutati, paesi coperti, **distribuzione dei punteggi**, **migliori destinazioni** (family/totale), **copertura per continente**. È la versione **esterna/commerciale** dell'infografica: **niente schede-hotel** (solo aggregati → opera derivata/Produced Work, ODbL §4.5b: nessuno share-alike; statistiche anonime → fuori dal GDPR) e **niente dati interni** (funnel CRM, valore atteso). Footer con attribuzione **«© OpenStreetMap contributors (ODbL)»** + metodo Kidotel + «non un database». Si apre nel browser di sistema (stampa/PDF). Riusa i comandi aggregati esistenti (`score_stats`, `score_histogram`, `coverage_by_country`).
+- Implementa la voce **«da fare ora» #2** del piano di uso economico della banca dati (vendita di insight aggregati). La **#1** (contenuti/classifiche SEO) è già coperta dal **Feed sito** della Fase 1.
+- i18n `report.*` + `insights.*` (it/en/ru, parità **297×3**). NEWS Guida trilingue. Mock dev `__insightsHtml` per la verifica in anteprima.
+### Verificato
+- `tsc` pulito; parità **297×3**; anteprima: voce di menu «Genera report di mercato» nel gruppo «Report insight (vendibile)»; report renderizzato (screenshot) on-brand con wordmark, 4 KPI, istogramma, top destinazioni, continenti; **controlli strutturali**: presente attribuzione OSM + link copyright + nota «Produced Work / non un database» + wordmark; **assenti** contatti privati e dati interni (funnel/valore); **0 errori console**.
+
 ## [0.8.32] — 2026-06-25
 ### Aggiunto — Fase 1 verso kidotel.co: feed sito + link di claim + outreach trilingue
 - **Export «Feed sito»** (3° pulsante nell'export a criteri, accanto a CSV/JSON): JSON **«Produced Work»** per kidotel.co — per ogni hotel emette identità (nome, città/provincia/regione/paese, lat/lon), sito, stelle, lusso, `family_fit_score`, **features come fatti** (chiave + etichetta EN), **UNA prova breve attribuita** (citazione ≤~25 parole + `source` URL), `price_tier` etichettato **«Kidotel estimate — not an OTA price»**, `claim_url` per-hotel, `links` (Booking con `aid` se impostato, mappa OSM) e `source`. In testa: attribuzione **«© OpenStreetMap contributors»** + nota di licenza ODbL. **Nessun contatto privato** (email/telefono/CRM restano solo nell'export CRM). Rispetta i vincoli verificati: ODbL Produced-Work, verbatim fatti-non-espressione, niente prezzi reali.
