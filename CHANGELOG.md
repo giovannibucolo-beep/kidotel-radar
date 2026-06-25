@@ -2,6 +2,23 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.19] — 2026-06-25
+### Aggiunto — Manuale completo in russo
+- **Guida/manuale interamente in russo**: tutte le **11 sezioni** della Guida e le voci **«Novità»** ora tradotte in russo (workflow multi-agente in parallelo: 22 stringhe Guida + 16 voci changelog). Il russo non ripiega più sull'inglese (`s[lang] ?? s.en`).
+- **Allineamento ai nomi reali dei pulsanti dell'app**: i riferimenti nel manuale russo combaciano con l'UI tradotta — «Измерить», «Завершить 100%», «Остановить», «Люкс», «Написать email», «Оценить family-fit», «По странам» (riconciliati con `src/i18n`, niente più termini italiani residui dei traduttori).
+- Aggiunta voce «Novità» di testa («Manuale completo in russo…») e rimossa la promessa ormai obsoleta «il manuale verrà tradotto a breve».
+### Corretto
+- **`src/App.tsx` conteneva 2 byte NUL** (sentinella usata come «nessun paese → nessun match») che rendevano il file **binario** per grep e per `file` (classificato «data»). Sostituiti con l'escape testuale `"\u0000"`: **stesso identico comportamento a runtime**, ma sorgente di nuovo UTF-8 valido.
+### Verificato
+- `tsc` pulito; anteprima (RU): Guida aperta → **tutte le 11 sezioni + le voci Novità rese in russo**, **0 leak italiani** e nomi pulsanti coincidenti con l'UI reale (verifica a runtime sul DOM), **0 errori** in console.
+
+## [0.8.18] — 2026-06-25
+### Aggiunto — Recensioni per hotel (import) + traducibili
+- Nuova tabella `reviews` + comandi `import_reviews` (JSON da Cowork: `{reviews:[{id,author,rating,text,source,date}]}`; re-import = sostituisce le recensioni dell'hotel), `get_reviews`, `review_counts`. Voce **Dati ▾ → Importa recensioni** (gruppo «Recensioni»). Esempio in `docs/reviews-sample.json`.
+- Le recensioni compaiono **espandendo la riga** dell'hotel (`ReviewsPanel`): voto ★, autore, fonte, data, testo + pulsante **«Traduci»** (riusa il motore di traduzione). Badge col **numero** di recensioni nell'elenco (icona Heroicon chat). La riga è espandibile anche per soli hotel con recensioni (senza voto).
+### Verificato
+- `tsc` + `cargo build` puliti; build di produzione ok; anteprima: voce «Импорт отзывов» nel menu Dati (RU), 0 errori (display recensioni su dati reali nell'app).
+
 ## [0.8.17] — 2026-06-25
 ### Aggiunto — Traduzione automatica delle prove
 - Comando `translate` (servizio gratuito senza chiave, auto-rileva la lingua di origine) → pulsante **«Traduci»** sotto ogni citazione nel pannello Prove: la rende nella lingua dell'app (IT/EN/RU). L'**originale verbatim resta sempre visibile** (la prova non si tocca). i18n `tr.*` it/en/ru.

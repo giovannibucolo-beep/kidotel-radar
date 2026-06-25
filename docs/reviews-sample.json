@@ -1,0 +1,8 @@
+{
+  "_formato": "Importa con: Dati ▾ → Importa recensioni. id = osm_type/osm_id (come negli export). Per ogni hotel presente nel file, le sue recensioni vengono SOSTITUITE (re-import pulito). Le raccoglie Cowork.",
+  "reviews": [
+    { "id": "relation/4447", "author": "Anna M.", "rating": 5, "text": "Tolles Hotel für Familien, das Personal war sehr freundlich zu unseren Kindern.", "source": "Google", "date": "2026-05-12" },
+    { "id": "relation/4447", "author": "Luca R.", "rating": 4, "text": "Camere ampie e colazione ottima, perfetto con i bambini.", "source": "Booking", "date": "2026-04-30" },
+    { "id": "relation/85761", "author": "Ольга", "rating": 5, "text": "Прекрасный отель, детям очень понравился бассейн.", "source": "Yandex", "date": "2026-06-01" }
+  ]
+}

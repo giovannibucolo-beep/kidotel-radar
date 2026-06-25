@@ -89,7 +89,11 @@ fn migrate(conn: &Connection) {
     // tutte da capo. + memoria della MISURA OSM per paese (così il grado di copertura non si perde).
     let _ = conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS scan_log (area_key TEXT PRIMARY KEY, scanned_at TEXT);
-         CREATE TABLE IF NOT EXISTS coverage_meta (country TEXT PRIMARY KEY, osm_total INTEGER, measured_at TEXT);",
+         CREATE TABLE IF NOT EXISTS coverage_meta (country TEXT PRIMARY KEY, osm_total INTEGER, measured_at TEXT);
+         CREATE TABLE IF NOT EXISTS reviews (
+            id INTEGER PRIMARY KEY, osm_type TEXT, osm_id INTEGER,
+            author TEXT, rating REAL, text TEXT, source TEXT, date TEXT);
+         CREATE INDEX IF NOT EXISTS idx_reviews_hotel ON reviews(osm_type, osm_id);",
     );
 }
 
@@ -157,6 +161,100 @@ pub fn osm_counts(app: AppHandle) -> Result<Vec<OsmCount>, String> {
         out.push(row.map_err(|e| e.to_string())?);
     }
     Ok(out)
+}
+
+// ----- RECENSIONI (raccolte da Cowork, importate via JSON; traducibili nell'app) -----
+#[derive(Serialize)]
+pub struct Review {
+    pub author: Option<String>,
+    pub rating: Option<f64>,
+    pub text: String,
+    pub source: Option<String>,
+    pub date: Option<String>,
+}
+
+#[tauri::command]
+pub fn get_reviews(app: AppHandle, osm_type: String, osm_id: i64) -> Result<Vec<Review>, String> {
+    let conn = open_db(&app)?;
+    let mut stmt = conn
+        .prepare("SELECT author, rating, text, source, date FROM reviews WHERE osm_type=?1 AND osm_id=?2 ORDER BY (date IS NULL), date DESC")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![osm_type, osm_id], |r| {
+            Ok(Review { author: r.get(0)?, rating: r.get(1)?, text: r.get(2)?, source: r.get(3)?, date: r.get(4)? })
+        })
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
+}
+
+// Numero di recensioni per hotel (per il badge in elenco). Restituisce "osm_type/osm_id" -> count.
+#[tauri::command]
+pub fn review_counts(app: AppHandle) -> Result<std::collections::HashMap<String, i64>, String> {
+    let conn = open_db(&app)?;
+    let mut stmt = conn
+        .prepare("SELECT osm_type || '/' || osm_id, COUNT(*) FROM reviews GROUP BY osm_type, osm_id")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))
+        .map_err(|e| e.to_string())?;
+    let mut out = std::collections::HashMap::new();
+    for row in rows {
+        let (k, v) = row.map_err(|e| e.to_string())?;
+        out.insert(k, v);
+    }
+    Ok(out)
+}
+
+// Importa recensioni da un JSON prodotto da Cowork: { "reviews": [ { id:"node/123", author, rating,
+// text, source, date } ] }. Per ogni hotel presente nel file, SOSTITUISCE le sue recensioni (re-import
+// pulito). `id` = "osm_type/osm_id". Restituisce quante recensioni inserite.
+#[tauri::command]
+pub fn import_reviews(app: AppHandle, path: String) -> Result<usize, String> {
+    let raw = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let v: serde_json::Value = serde_json::from_str(&raw).map_err(|e| format!("JSON non valido: {e}"))?;
+    let arr = v.get("reviews").and_then(|x| x.as_array()).ok_or("manca la chiave \"reviews\" (array)")?;
+    let mut conn = open_db(&app)?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let mut cleared: std::collections::HashSet<(String, i64)> = std::collections::HashSet::new();
+    let mut n = 0usize;
+    for r in arr {
+        let id = match r.get("id").and_then(|x| x.as_str()) {
+            Some(s) => s,
+            None => continue,
+        };
+        let (ot, oid_s) = match id.split_once('/') {
+            Some(p) => p,
+            None => continue,
+        };
+        let oid: i64 = match oid_s.parse() {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+        let text = r.get("text").and_then(|x| x.as_str()).unwrap_or("").trim().to_string();
+        if text.is_empty() {
+            continue;
+        }
+        // al primo review di un hotel, svuota le sue recensioni precedenti (re-import pulito)
+        if cleared.insert((ot.to_string(), oid)) {
+            let _ = tx.execute("DELETE FROM reviews WHERE osm_type=?1 AND osm_id=?2", params![ot, oid]);
+        }
+        let author = r.get("author").and_then(|x| x.as_str());
+        let rating = r.get("rating").and_then(|x| x.as_f64());
+        let source = r.get("source").and_then(|x| x.as_str());
+        let date = r.get("date").and_then(|x| x.as_str());
+        tx.execute(
+            "INSERT INTO reviews(osm_type, osm_id, author, rating, text, source, date) VALUES (?1,?2,?3,?4,?5,?6,?7)",
+            params![ot, oid, author, rating, text, source, date],
+        )
+        .map_err(|e| e.to_string())?;
+        n += 1;
+    }
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(n)
 }
 
 pub fn upsert_hotels(conn: &Connection, hotels: &[Hotel]) -> Result<(), String> {

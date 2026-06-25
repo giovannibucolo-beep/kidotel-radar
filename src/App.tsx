@@ -276,6 +276,7 @@ export default function App() {
   const [covBusy, setCovBusy] = useState<string | null>(null);
   const [starsBusy, setStarsBusy] = useState(false);
   const [contacts, setContacts] = useState<Record<string, ContactState>>({});
+  const [reviewCounts, setReviewCounts] = useState<Record<string, number>>({});
   const [crmFilter, setCrmFilter] = useState<ContactStatus | "all">("all");
   const [showAssump, setShowAssump] = useState(false);
   const [settings, setSettings] = useState<Settings>(loadSettings);
@@ -624,6 +625,7 @@ kidotel.co`;
     invoke<{ country: string; osm_total: number }[]>("osm_counts")
       .then((rows) => setOsmTotals(Object.fromEntries(rows.map((r) => [r.country, r.osm_total]))))
       .catch(() => { /* anteprima senza Tauri */ });
+    invoke<Record<string, number>>("review_counts").then(setReviewCounts).catch(() => { /* */ });
   }, []);
   // I banner informativi si chiudono da soli dopo 6s (oltre al click per chiuderli subito). MA NON
   // mentre è in corso una scansione/completamento/valutazione: lì il banner è la PROGRESSIONE in
@@ -806,8 +808,8 @@ kidotel.co`;
   function selToArgs(s: ExportSel): SelectArgs {
     let countries: string[] = [];
     if (s.scope === "continent") countries = coverage.map((c) => c.country).filter((c) => CONTINENT[c] === s.continent);
-    else if (s.scope === "country") countries = s.country ? [s.country] : [" "]; // sentinella: niente paese → nessun match
-    if (s.scope === "continent" && countries.length === 0) countries = [" "];
+    else if (s.scope === "country") countries = s.country ? [s.country] : ["\u0000"]; // sentinella: niente paese → nessun match
+    if (s.scope === "continent" && countries.length === 0) countries = ["\u0000"];
     return {
       countries,
       scoreMin: s.useScoreRange ? s.scoreMin : null,
@@ -1134,6 +1136,20 @@ kidotel.co`;
     }
   }
 
+  // Importa le recensioni raccolte da Cowork (JSON: { reviews:[{id:"node/123",author,rating,text,source,date}] }).
+  async function importReviews() {
+    try {
+      const path = await open({ multiple: false, filters: [{ name: "JSON", extensions: ["json"] }] });
+      if (typeof path === "string") {
+        const n = await invoke<number>("import_reviews", { path });
+        try { setReviewCounts(await invoke<Record<string, number>>("review_counts")); } catch { /* */ }
+        setNotice(`${n} ${t("reviews.imported")}`);
+      }
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
   // Backup: l'intero database in un file .sqlite, esportabile e re-importabile.
   async function exportBackup() {
     try {
@@ -1186,9 +1202,17 @@ kidotel.co`;
           <span>{score !== null ? <span className="score" style={scoreHeat(score, settings.familyThreshold)}>{score}</span> : <span className="muted">{t("results.notscored")}</span>}</span>
           <span className="cell-er">{er !== null ? <span className="er-val">€ {er.toLocaleString(lang)}</span> : <span className="muted">—</span>}</span>
           <span className="cell-site">{h.website ? <a href={h.website} target="_blank" rel="noreferrer" onClick={extLink(h.website)}>{prettyHost(h.website)}</a> : <span className="muted">{t("results.nosite")}</span>}</span>
-          <span className="no-print"><button className="proof-toggle" disabled={!sc} onClick={() => setExpanded(isOpen ? null : k)} aria-expanded={isOpen}>{t("results.proof")}</button></span>
+          <span className="no-print">
+            {(reviewCounts[k] ?? 0) > 0 && <span className="rev-badge" title={t("reviews.title")}><Icon name="chat" size={12} /> {reviewCounts[k]}</span>}
+            <button className="proof-toggle" disabled={!sc && (reviewCounts[k] ?? 0) === 0} onClick={() => setExpanded(isOpen ? null : k)} aria-expanded={isOpen}>{t("results.proof")}</button>
+          </span>
         </div>
-        {isOpen && sc && <ProofPanel sc={sc} t={t} lang={lang} />}
+        {isOpen && (
+          <>
+            {sc && <ProofPanel sc={sc} t={t} lang={lang} />}
+            {(reviewCounts[k] ?? 0) > 0 && <ReviewsPanel h={h} t={t} lang={lang} />}
+          </>
+        )}
       </div>
     );
   };
@@ -1272,6 +1296,9 @@ kidotel.co`;
                 <div className="menu-group">{t("ai.title")}</div>
                 <button role="menuitem" onClick={() => { setDataMenuOpen(false); exportAiBatch(); }}><Icon name="download" size={15} /> {t("ai.export")}</button>
                 <button role="menuitem" onClick={() => { setDataMenuOpen(false); importAiScores(); }}><Icon name="upload" size={15} /> {t("ai.import")}</button>
+                <div className="menu-sep" />
+                <div className="menu-group">{t("reviews.title")}</div>
+                <button role="menuitem" onClick={() => { setDataMenuOpen(false); importReviews(); }}><Icon name="upload" size={15} /> {t("reviews.import")}</button>
               </div>
             </>
           )}
@@ -1554,6 +1581,46 @@ function ProofPanel({ sc, t, lang }: { sc: EnrichResult; t: (k: TKey) => string;
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+type Review = { author: string | null; rating: number | null; text: string; source: string | null; date: string | null };
+
+// Recensioni dell'hotel (importate da Cowork), caricate quando si espande la riga. Ogni recensione ha
+// un pulsante «Traduci» (stesso meccanismo delle prove); l'originale resta visibile.
+function ReviewsPanel({ h, t, lang }: { h: Hotel; t: (k: TKey) => string; lang: Lang }) {
+  const [reviews, setReviews] = useState<Review[] | "loading">("loading");
+  const [tr, setTr] = useState<Record<number, string>>({});
+  useEffect(() => {
+    invoke<Review[]>("get_reviews", { osmType: h.osm_type, osmId: h.osm_id }).then(setReviews).catch(() => setReviews([]));
+  }, [h.osm_type, h.osm_id]);
+  async function toggleTr(i: number, text: string) {
+    if (tr[i]) { setTr((p) => { const n = { ...p }; delete n[i]; return n; }); return; }
+    setTr((p) => ({ ...p, [i]: "…" }));
+    try { const out = await invoke<string>("translate", { text, target: lang }); setTr((p) => ({ ...p, [i]: out })); }
+    catch { setTr((p) => ({ ...p, [i]: "⚠ " + t("tr.error") })); }
+  }
+  if (reviews === "loading") return <div className="proof reviews"><div className="proof-empty">{t("reviews.loading")}</div></div>;
+  if (reviews.length === 0) return null;
+  return (
+    <div className="proof reviews">
+      <div className="proof-title"><Icon name="chat" size={14} /> {t("reviews.title")} ({reviews.length})</div>
+      {reviews.map((r, i) => (
+        <div className="review-item" key={i}>
+          <div className="review-head">
+            {r.rating != null && <span className="review-rating">{"★".repeat(Math.max(0, Math.min(5, Math.round(r.rating))))} {r.rating}</span>}
+            {r.author && <span className="review-author">{r.author}</span>}
+            {r.source && <span className="review-src">{r.source}</span>}
+            {r.date && <span className="review-date">{r.date}</span>}
+          </div>
+          <div className="review-text">
+            {r.text}
+            <button className="proof-tr-btn" onClick={() => toggleTr(i, r.text)}><Icon name="help" size={12} /> {tr[i] ? t("tr.hide") : t("tr.translate")}</button>
+            {tr[i] && <div className="proof-tr">→ {tr[i]}</div>}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

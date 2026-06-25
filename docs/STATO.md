@@ -2,8 +2,17 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.17` (installata su macOS) + connettore MCP `kidotel-mcp`
-- **Aggiornato:** 2026-06-24
+- **Versione:** `0.8.19` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Aggiornato:** 2026-06-25
+
+## Fatto v0.8.19 (2026-06-25) — manuale completo in russo
+- Guida/manuale **interamente in russo**: 11 sezioni Guida + voci NEWS tradotte (workflow multi-agente; 22+16 stringhe), riconciliate con i nomi reali dei pulsanti UI (Измерить, Завершить 100%, Остановить, Люкс, Написать email, Оценить family-fit, По странам). Niente più ripiego inglese per `ru`.
+- **Fix corruzione**: `src/App.tsx` aveva 2 **byte NUL** (sentinella `["\0"]` «nessun paese») → file binario per grep/`file`. Sostituiti con escape `"\u0000"` (runtime identico, sorgente UTF-8 valido). Anche 1 NUL accidentale nel CHANGELOG ripulito.
+- Verificato a runtime (anteprima RU): Guida aperta, 11 sezioni + NEWS in russo, 0 leak italiani, 0 errori console. tsc pulito.
+- **In sospeso**: Windows `.exe` (#12) **bloccato** sul billing GitHub Actions del repo privato (run fallita: pagamenti account). Presentazione HTML (#13) ancora da fare.
+
+## Fatto v0.8.18 (2026-06-25) — recensioni per hotel (import + traducibili)
+- Tabella `reviews` + `import_reviews`/`get_reviews`/`review_counts`. Dati▾→Importa recensioni. `ReviewsPanel` nella riga espansa (voto/autore/fonte/data + Traduci), badge conteggio (icona chat). i18n reviews.* it/en/ru. Esempio docs/reviews-sample.json. tsc+cargo+build ok.
 
 ## Fatto v0.8.17 (2026-06-25) — traduzione automatica delle prove
 - Comando `translate` (gtx, no key, auto-detect) → ProofPanel pulsante «Traduci» per citazione (target=lang app), originale sempre visibile. i18n tr.* it/en/ru. Test live `live_translate` ok. Base per traduzione reviews.

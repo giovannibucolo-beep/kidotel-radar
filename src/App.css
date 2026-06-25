@@ -240,6 +240,13 @@ body { margin: 0; background: var(--bg); }
 .proof-tr-btn { margin-left: 8px; font: inherit; font-size: 11px; font-style: normal; color: var(--brand-strong); background: none; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; vertical-align: 1px; }
 .proof-tr-btn:hover { text-decoration: underline; }
 .proof-tr { font-style: normal; color: var(--text-2); font-size: 12.5px; margin: 3px 0 2px 15px; }
+.rev-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--brand-strong); margin-right: 8px; vertical-align: 1px; }
+.reviews .review-item { padding: 8px 0; border-top: 1px solid var(--border); }
+.review-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; color: var(--text-2); margin-bottom: 3px; }
+.review-rating { color: #e8930e; font-weight: 600; }
+.review-author { font-weight: 600; color: var(--text); }
+.review-src, .review-date { color: var(--text-3); }
+.review-text { font-size: 13px; color: var(--text); }
 .proof-src { font-size: 12px; color: var(--brand-strong); text-decoration: none; margin-left: 15px; }
 .proof-src:hover { text-decoration: underline; }
 .proof-absent { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
