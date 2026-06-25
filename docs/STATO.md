@@ -8,29 +8,29 @@
 ## Fatto v0.8.36 (2026-06-25) — Family-Fit as a Service (valuta un sito su richiesta, no DB)
 - Menu Dati → «Valuta un hotel su richiesta»: incolli un sito, Radar applica lo stesso scoring e restituisce punteggio + prova citata + risposta API (JSON). Non tocca il DB Kidotel (solo il sito fornito). Rust `score_website` (riusa gather_pages+score_pages, no DB) registrato; frontend `FtoolOverlay`+`runFtool`. Implementa la via «family-fit as a service».
 - Verificato: cargo test 13 passati + live `score_website` reale (schwarzenstein.com → score 76, 5 segnali, 1,7s); tsc pulito, parità 338×3; anteprima (overlay + wiring + risultato con mock realistico + JSON), 0 errori console.
-- **Tutte le vie economiche interne fatte**: SEO/feed · report di mercato · Kidotel Certified · analytics premium · **family-fit as a service**. Resta: outreach 1:1 (motore già pronto), e lato kidotel.com import feed + /claim (nota tecnica consegnata).
+- **Tutte le vie economiche interne fatte**: SEO/feed · report di mercato · Kidotel Certified · analytics premium · **family-fit as a service**. Resta: outreach 1:1 (motore già pronto), e lato kidotel.co import feed + /claim (nota tecnica consegnata).
 
 ## Fatto v0.8.35 (2026-06-25) — Analisi premium per hotel (insight azionabile vendibile)
 - Riga hotel valutato → «Analisi premium»: report che trasforma il punteggio in insight: percentile mondiale (da score_histogram, es. Top 8%), benchmark di paese, breakdown dei 7 segnali attivi (pesi da signals.json, max 94), leve di miglioramento (segnali mancanti pesati + potenziale). Produced Work ODbL-safe, nessun dato di altri hotel/interno. Implementa la via «analytics premium». `SIGNAL_CATALOG`, `buildAnalyticsHtml`/`openHotelAnalytics`.
 - Fix: riga «earned su 94» mostrava `<b>` escapizzato → corretto.
 - Verificato: tsc pulito, parità 327×3, anteprima (mock realistico score 76), matematica controllata (Top 8%/92%, 76/94, +18 potenziale, Italy 10%), attribuzione OSM, no dati interni, 0 errori console.
-- **Vie economiche fatte**: SEO/feed, report di mercato, Kidotel Certified, **analytics premium**. **Prossimo**: API «family-fit as a service», outreach 1:1. Lato kidotel.com: import feed + /claim (nota tecnica pronta).
+- **Vie economiche fatte**: SEO/feed, report di mercato, Kidotel Certified, **analytics premium**. **Prossimo**: API «family-fit as a service», outreach 1:1. Lato kidotel.co: import feed + /claim (nota tecnica pronta).
 
 ## Fatto v0.8.34 (2026-06-25) — Kidotel Certified (certificato + badge per-hotel)
 - Riga hotel valutato → «Certificato Kidotel»: certificato brandizzato (Produced Work) con punteggio + servizi famiglia e PROVA citata dal sito (con fonte) + attribuzione OSM, da inviare/stampare; e badge HTML copiato negli appunti (link `{base}/hotel/{osm_type}/{osm_id}` → backlink kidotel.co). Implementa la via economica «Kidotel Certified». `buildCertificateHtml`/`badgeSnippet`/`openCertificate`.
 - Verificato: tsc pulito, parità 308×3, anteprima (certificato on-brand, screenshot; struttura: nome/punteggio/sigillo/3 prove+fonte/attribuzione OSM/metodo/wordmark; no contatti; badge URL ok), 0 errori console.
-- **Nota tecnica per kidotel.com** pronta (trilingue): `presentazione/kidotel-nota-tecnica-kidotelcom.html` (import Feed + endpoint /claim).
-- **Prossimo (piano economico)**: metodologia/scoring come API, analytics premium per hotel, outreach 1:1 mirato. Lato kidotel.com: import feed + /claim (vedi nota tecnica).
+- **Nota tecnica per kidotel.co** pronta (trilingue): `presentazione/kidotel-nota-tecnica-kidotelco.html` (import Feed + endpoint /claim).
+- **Prossimo (piano economico)**: metodologia/scoring come API, analytics premium per hotel, outreach 1:1 mirato. Lato kidotel.co: import feed + /claim (vedi nota tecnica).
 
 ## Fatto v0.8.33 (2026-06-25) — Report di mercato vendibile (uso economico dato, «da fare ora» #2)
 - Nuovo **Report insight** (menu Dati): HTML stampabile con SOLO aggregati (analizzati, family, distribuzione, top destinazioni, continenti) → opera derivata/Produced Work (ODbL §4.5b, no share-alike; statistiche anonime = fuori GDPR), con attribuzione OSM + «non un database». Niente schede-hotel, niente dati interni (funnel/valore). Riusa score_stats/score_histogram/coverage_by_country. Implementa la «da fare ora» #2 del piano economico; la #1 (SEO/classifiche) è coperta dal Feed sito (v0.8.32).
 - Verificato: tsc pulito, parità 297×3, anteprima (menu + report renderizzato on-brand, screenshot), controlli strutturali (attribuzione OSM, no contatti, no dati interni), 0 errori console.
-- **In sospeso**: lato kidotel.com import feed + endpoint /claim (Django); altre vie economiche (metodologia/API, Kidotel Certified, outreach) = fasi successive del piano.
+- **In sospeso**: lato kidotel.co import feed + endpoint /claim (Django); altre vie economiche (metodologia/API, Kidotel Certified, outreach) = fasi successive del piano.
 
 ## Fatto v0.8.32 (2026-06-25) — Fase 1 verso kidotel.co (feed sito + link claim + outreach trilingue)
 - Implementata la **Fase 1** del piano operativo (vedi `presentazione/kidotel-piano-operativo.html`): export **«Feed sito»** Produced-Work per kidotel.co (identità+punteggio+fatti+prova breve con fonte+claim_url+links booking(aid)/mappa+attribuzione OSM; NIENTE contatti privati), **link di claim per-hotel** `{base}/claim/{osm_type}/{osm_id}?lang&ff` (base configurabile in Impostazioni→Integrazione kidotel.co), **ID affiliato Booking (aid)** opzionale, **outreach CRM trilingue** (IT/EN/RU) col link di claim.
 - Verificato: tsc pulito, parità 286×3, anteprima (gruppo Impostazioni + pulsante «Feed sito» + 0 errori), test logico feed (claim url, no contatti, aid, stima, prova+source). Rispettati i vincoli legali verificati (ODbL produced-work, verbatim, no prezzi reali).
-- **Prossimo**: lato kidotel.com servono import feed + endpoint `/claim` (Django) — vedi piano. In sospeso: piano di uso economico della banca dati (ricerca verificata pronta, da presentare).
+- **Prossimo**: lato kidotel.co servono import feed + endpoint `/claim` (Django) — vedi piano. In sospeso: piano di uso economico della banca dati (ricerca verificata pronta, da presentare).
 
 ## Fatto v0.8.31 (2026-06-25) — link hotel che FUNZIONANO (Google falliva per muro cookie UE)
 - «Google Hotels non funziona» = da IT google.com/* fa 302→consent.google.com (gl=IT) prima dell'hotel, e seguendo il flusso si arriva a `/travel/unsupported`; la scheda esatta richiede un entity-id opaco non derivabile. → Google tolto del tutto (Hotels+Maps).
