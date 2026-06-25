@@ -558,6 +558,56 @@ pub fn select_hotels(app: AppHandle, args: SelectArgs) -> Result<Vec<HotelRow>, 
     Ok(out)
 }
 
+// Riga LEGGERA per il CRM: solo i campi che servono all'acquisizione (niente score_breakdown/enrichment,
+// che per decine di migliaia di righe peserebbero centinaia di MB). Così il CRM può caricare TUTTO
+// l'archivio contattabile (non solo i primi 5000) e filtrarlo in memoria, in fretta.
+#[derive(Serialize)]
+pub struct CrmRow {
+    pub osm_type: String,
+    pub osm_id: i64,
+    pub name: String,
+    pub city: Option<String>,
+    pub country: Option<String>,
+    pub region: Option<String>,
+    pub province: Option<String>,
+    pub website: Option<String>,
+    pub phone: Option<String>,
+    pub email: Option<String>,
+    pub email_status: Option<String>,
+    pub lat: f64,
+    pub lon: f64,
+    pub family_fit_score: Option<i64>,
+    pub stars: Option<i64>,
+    pub contact_status: Option<String>,
+    pub contact_note: Option<String>,
+}
+
+#[tauri::command]
+pub fn select_crm(app: AppHandle, args: SelectArgs) -> Result<Vec<CrmRow>, String> {
+    let conn = open_db(&app)?;
+    let lim = args.limit.unwrap_or(500000).clamp(1, 500000);
+    let (where_sql, p) = build_select_where(&args);
+    let order = "ORDER BY (family_fit_score IS NULL), family_fit_score DESC, name COLLATE NOCASE";
+    let cols = "osm_type, osm_id, name, city, country, region, province, website, phone, email, email_status, lat, lon, family_fit_score, stars, contact_status, contact_note";
+    let sql = format!("SELECT {cols} FROM hotels WHERE {where_sql} {order} LIMIT {lim}");
+    let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(rusqlite::params_from_iter(p.iter()), |r| {
+            Ok(CrmRow {
+                osm_type: r.get(0)?, osm_id: r.get(1)?, name: r.get(2)?, city: r.get(3)?, country: r.get(4)?,
+                region: r.get(5)?, province: r.get(6)?, website: r.get(7)?, phone: r.get(8)?, email: r.get(9)?,
+                email_status: r.get(10)?, lat: r.get(11)?, lon: r.get(12)?, family_fit_score: r.get(13)?,
+                stars: r.get(14)?, contact_status: r.get(15)?, contact_note: r.get(16)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
+}
+
 #[derive(Serialize)]
 pub struct ScoreStats {
     pub total: i64,

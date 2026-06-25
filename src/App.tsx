@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { save, open } from "@tauri-apps/plugin-dialog";
 import { useI18n, type Lang, type TKey } from "./i18n";
@@ -100,6 +100,28 @@ type HotelRow = {
   price_tier: number | null;
   price_eur: number | null;
   price_src: string | null;
+};
+
+// Riga LEGGERA per il CRM (corrisponde a CrmRow lato Rust): solo i campi utili all'acquisizione,
+// così si carica TUTTO l'archivio contattabile (non solo i primi 5000) senza trasferire i breakdown.
+type CrmRowLite = {
+  osm_type: string;
+  osm_id: number;
+  name: string;
+  city: string | null;
+  country: string | null;
+  region: string | null;
+  province: string | null;
+  website: string | null;
+  phone: string | null;
+  email: string | null;
+  email_status: string | null;
+  lat: number;
+  lon: number;
+  family_fit_score: number | null;
+  stars: number | null;
+  contact_status: string | null;
+  contact_note: string | null;
 };
 
 type SignalResult = {
@@ -385,6 +407,8 @@ export default function App() {
   const [covBusy, setCovBusy] = useState<string | null>(null);
   const [starsBusy, setStarsBusy] = useState(false);
   const [scanCursor, setScanCursor] = useState(loadScanCursor()); // ripresa di «Completa tutti»
+  const [crmRows, setCrmRows] = useState<{ h: Hotel; score: number | null; er: number | null }[]>([]); // CRM: TUTTO l'archivio contattabile
+  const [crmLoading, setCrmLoading] = useState(false);
   const [contacts, setContacts] = useState<Record<string, ContactState>>({});
   const [reviewCounts, setReviewCounts] = useState<Record<string, number>>({});
   const [crmFilter, setCrmFilter] = useState<ContactStatus | "all">("all");
@@ -687,7 +711,7 @@ export default function App() {
     }
   }
 
-  function openCrm() { setViewMode("crm"); }
+  function openCrm() { setViewMode("crm"); if (crmRows.length === 0) void loadCrm(); }
 
   // CRM: genera l'email di outreach. SEMPRE in inglese, formale, voce al PLURALE (il team Kidotel,
   // mai prima persona singolare): racconta la filosofia del progetto, fa sentire l'hotel SELEZIONATO
@@ -947,6 +971,39 @@ kidotel.co`;
     if (score === null || !h.website) return null;
     const idx = COUNTRY_VALUE[h.country ?? ""] ?? COUNTRY_VALUE_DEFAULT;
     return Math.round(erValue * idx * (erComm / 100) * (score / 100) * (erVolume * (score / 100)));
+  }
+
+  // CRM: carica TUTTO l'archivio contattabile (non più solo i 5000 della pagina), via `select_crm`
+  // (righe leggere, senza breakdown). Ordinato per voto lato DB; il CRM poi ordina per valore atteso e
+  // applica i filtri cumulabili in memoria. Si renderizza comunque al massimo `renderCap` righe.
+  async function loadCrm() {
+    setCrmLoading(true);
+    setError(null);
+    try {
+      const args: SelectArgs = { countries: [], scoreMin: null, scoreMax: null, onlyScored: false, onlyContactable: true, onlyDeliverable: false, limit: null };
+      const list = await invoke<CrmRowLite[]>("select_crm", { args });
+      const cr = list.map((r) => {
+        const h: Hotel = {
+          osm_type: r.osm_type, osm_id: r.osm_id, name: r.name,
+          city: r.city, country: r.country, region: r.region, province: r.province,
+          website: r.website, phone: r.phone, email: r.email, email_status: r.email_status,
+          source: "OpenStreetMap", lat: r.lat, lon: r.lon, stars: r.stars, luxury: null,
+          price_tier: null, price_eur: null, price_src: null,
+        };
+        return { h, score: r.family_fit_score, er: erOf(h, r.family_fit_score) };
+      });
+      setCrmRows(cr);
+      // stato/nota del contatto per questi hotel (dato reale, per i chip e l'editor di stato).
+      setContacts((prev) => {
+        const next = { ...prev };
+        for (const r of list) next[`${r.osm_type}/${r.osm_id}`] = { status: (r.contact_status as ContactStatus) || "da_contattare", note: r.contact_note || "" };
+        return next;
+      });
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setCrmLoading(false);
+    }
   }
 
   function rowsToCsv(list: HotelRow[]): string {
@@ -1564,9 +1621,10 @@ kidotel.co`;
             />
           ) : viewMode === "crm" ? (
             <CrmView
-              rows={rows} contacts={contacts} crmFilter={crmFilter} setCrmFilter={setCrmFilter}
+              rows={crmRows} contacts={contacts} crmFilter={crmFilter} setCrmFilter={setCrmFilter}
               onSave={saveContact} onEmail={emailContact} t={t} lang={lang}
               threshold={settings.familyThreshold} renderCap={settings.renderCap}
+              loading={crmLoading} onRefresh={loadCrm}
             />
           ) : viewMode === "map" ? (
             hotels.length === 0 && !error ? (
@@ -1760,7 +1818,7 @@ function ReviewsPanel({ h, t, lang }: { h: Hotel; t: (k: TKey) => string; lang: 
 }
 
 function CrmView({
-  rows, contacts, crmFilter, setCrmFilter, onSave, onEmail, t, lang, threshold, renderCap,
+  rows, contacts, crmFilter, setCrmFilter, onSave, onEmail, t, lang, threshold, renderCap, loading, onRefresh,
 }: {
   rows: { h: Hotel; score: number | null; er: number | null }[];
   contacts: Record<string, ContactState>;
@@ -1772,9 +1830,12 @@ function CrmView({
   lang: Lang;
   threshold: number;
   renderCap: number;
+  loading: boolean;
+  onRefresh: () => void;
 }) {
-  // Targeting: filtri per concentrarsi sui prospect più redditizi (paese, stelle, family-fit, email
-  // recapitabile, valore atteso minimo). Operano sul set caricato (i migliori per voto).
+  // Targeting: filtri CUMULABILI per concentrarsi sui prospect più redditizi (paese, stelle, family-fit,
+  // email recapitabile, valore atteso minimo). Operano su TUTTO l'archivio contattabile (caricato da
+  // select_crm), non più solo sui primi 5000. La tabella mostra al massimo `renderCap` righe.
   const [fCountry, setFCountry] = useState("");
   const [fStars, setFStars] = useState(0);
   const [fMinScore, setFMinScore] = useState(0);
@@ -1782,11 +1843,18 @@ function CrmView({
   const [fMinEr, setFMinEr] = useState(0);
 
   // Hotel contattabili (con almeno un canale), ordinati per Valore atteso ↓ (priorità acquisizione).
-  const contactable = rows
-    .filter((r) => r.h.website || r.h.email || r.h.phone)
-    .sort((a, b) => (b.er ?? -1) - (a.er ?? -1) || a.h.name.localeCompare(b.h.name, lang));
+  // memoizzati: con decine di migliaia di righe non vanno ri-ordinati a ogni tasto dei filtri.
+  const contactable = useMemo(
+    () => rows
+      .filter((r) => r.h.website || r.h.email || r.h.phone)
+      .sort((a, b) => (b.er ?? -1) - (a.er ?? -1) || a.h.name.localeCompare(b.h.name, lang)),
+    [rows, lang],
+  );
 
-  const countriesAvail = [...new Set(contactable.map((r) => r.h.country).filter((c): c is string => !!c))].sort((a, b) => a.localeCompare(b, lang));
+  const countriesAvail = useMemo(
+    () => [...new Set(contactable.map((r) => r.h.country).filter((c): c is string => !!c))].sort((a, b) => a.localeCompare(b, lang)),
+    [contactable, lang],
+  );
   const targeted = contactable.filter((r) => {
     if (fCountry && r.h.country !== fCountry) return false;
     if (fStars && (r.h.stars ?? 0) < fStars) return false;
@@ -1804,12 +1872,19 @@ function CrmView({
 
   const shown = crmFilter === "all" ? targeted : targeted.filter((r) => statusOf(r.h) === crmFilter);
 
+  if (loading && rows.length === 0) {
+    return <div className="placeholder">{t("crm.loading")}</div>;
+  }
   if (contactable.length === 0) {
     return <div className="placeholder">{t("crm.empty")}</div>;
   }
+  const capped = shown.length > renderCap; // ne mostriamo al massimo renderCap, ma il conteggio è sull'intero set
   return (
     <div className="crm">
-      <div className="crm-intro">{t("crm.intro")}</div>
+      <div className="crm-intro">
+        {t("crm.intro")}
+        <button className="link-btn" disabled={loading} onClick={onRefresh}>{loading ? t("crm.loading") : t("crm.refresh")}</button>
+      </div>
       <div className="crm-target">
         <label className="tb-item">
           <select value={fCountry} onChange={(e) => setFCountry(e.currentTarget.value)}>
@@ -1860,6 +1935,7 @@ function CrmView({
           <span>{t("crm.note")}</span>
         </div>
         {shown.length === 0 && <div className="trow-empty">{t("crm.nofilter")}</div>}
+        {capped && <div className="crm-capped">{t("crm.showingTop")} {renderCap.toLocaleString(lang)} / {shown.length.toLocaleString(lang)} — {t("crm.narrow")}</div>}
         {shown.slice(0, renderCap).map(({ h, score, er }) => {
           const k = hkey(h);
           const c = contacts[k] ?? { status: "da_contattare" as ContactStatus, note: "" };

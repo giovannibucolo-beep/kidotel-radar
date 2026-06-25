@@ -24,6 +24,7 @@ pub fn run() {
             engine::backfill_stars,
             db::count_select,
             db::select_hotels,
+            db::select_crm,
             db::score_stats,
             db::score_histogram,
             db::list_unscored,

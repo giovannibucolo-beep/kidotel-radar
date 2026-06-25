@@ -2,8 +2,12 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.23` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.24` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-25
+
+## Fatto v0.8.24 (2026-06-25) — CRM su TUTTO l'archivio contattabile (non più 5000)
+- Nuovo comando `select_crm` (riga leggera CrmRow, niente breakdown) → il CRM carica tutto l'archivio contattabile in stato dedicato `crmRows` (disaccoppiato dalla pagina d'archivio da 5000). Filtri cumulabili (paese/stelle/family-fit/valore/recapitabile + chip stato) sull'intero set; conteggio+valore totale sull'intero set; tabella max `renderCap` con nota «Mostro i primi N/Totale». Loading + «aggiorna». `contactable` memoizzato. i18n it/en/ru.
+- Verificato (mock 7000): conta 7000·€2.327.355 (non 5000), «primi 500/7000»; filtri stack (Switzerland 1166 → +score≥80 = 466); 0 errori. tsc+cargo ok.
 
 ## Fatto v0.8.23 (2026-06-25) — manuale in-app con screenshot auto-aggiornati
 - Guida con SCREENSHOT reali sotto le sezioni (Hotel/Copertura/CRM/Infografica), nella lingua dell'app (IT/EN/RU). `scripts/capture-manual.mjs` (Playwright + mock invoke Tauri, niente backend/dati reali) → `public/manual/<vista>.<lingua>.png` (12 PNG, scale 1.5). `release.mjs` li rigenera PRIMA del build → manuale sempre allo stato dell'arte. Guida: campo `shot?` + `<img>` lazy con fallback; CSS `.guide-shot`. `playwright` devDep.

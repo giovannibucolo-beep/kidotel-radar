@@ -2,6 +2,14 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.24] — 2026-06-25
+### Corretto/Migliorato — il CRM mostra TUTTO l'archivio contattabile (non più 5000)
+- Il CRM mostrava solo gli hotel della pagina d'archivio caricata (**max 5000**). Ora carica **tutto l'archivio contattabile** (hotel con email/sito/telefono) tramite un nuovo comando **`select_crm`** — riga LEGGERA (niente `score_breakdown`/`enrichment`, che per decine di migliaia di righe peserebbero centinaia di MB), così si possono caricare anche 50–100k contatti in fretta.
+- **Filtri cumulabili** (già presenti) ora operano sull'INTERO set: paese, stelle ★, family-fit ≥, valore atteso ≥ €, solo email recapitabile + i chip di stato. Conteggio e **valore atteso totale** sono sull'intero archivio contattabile. La tabella ne renderizza al massimo `renderCap` (impostazioni) con la nota «Mostro i primi N / Totale — restringi con i filtri».
+- Dataset CRM **disaccoppiato** dalla pagina d'archivio (stato `crmRows` dedicato, caricato a ingresso vista con indicatore di caricamento + «aggiorna»). `contactable` memoizzato (niente ri-ordino a ogni tasto su set enormi).
+### Verificato
+- `tsc` + `cargo build` puliti; anteprima (mock 7000 contatti): il CRM conta **7000 · € 2.327.355** (non 5000), nota «Mostro i primi 500 / 7000»; filtri cumulabili → paese «Switzerland» 1166, + family-fit ≥ 80 = 466 (stack corretto); 0 errori console. i18n it/en/ru.
+
 ## [0.8.23] — 2026-06-25
 ### Aggiunto — Manuale in-app con SCREENSHOT auto-aggiornati ad ogni release
 - La Guida integrata ora mostra, sotto le sezioni principali (Hotel, Copertura, CRM, Infografica), uno **screenshot reale dell'interfaccia** nella lingua dell'app (IT/EN/RU).

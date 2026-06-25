@@ -368,7 +368,8 @@ body { margin: 0; background: var(--bg); }
 .cov-scan.stop:hover { background: #fceaea; }
 
 /* CRM / Outreach */
-.crm-intro { font-size: 13px; color: var(--text-2); margin-bottom: 12px; }
+.crm-intro { font-size: 13px; color: var(--text-2); margin-bottom: 12px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.crm-capped { padding: 8px 10px; font-size: 12.5px; color: var(--text-2); background: var(--surface-2, #f0efe9); border-radius: 8px; margin: 2px 0 8px; }
 .crm-target { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 12px; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius-sm); font-size: 13px; }
 .crm-target select, .crm-target input[type="number"] { padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-size: 13px; }
 .crm-target-sum { font-weight: 600; color: var(--text-2); font-variant-numeric: tabular-nums; }
