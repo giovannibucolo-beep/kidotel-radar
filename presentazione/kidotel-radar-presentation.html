@@ -56,9 +56,14 @@ a{color:var(--deep)}
 
 /* ---------- switch lingua: radio nascosti (focusabili) + label visibili ---------- */
 .lang-radio{position:absolute; width:1px; height:1px; opacity:0; pointer-events:none}
+/* ROBUSTEZZA: l'italiano è visibile di DEFAULT, SENZA dipendere da :checked. Così la pagina non è MAI
+   vuota — anche se un client di posta o un'anteprima ignorano lo stato dei radio, o se i CSS vengono
+   ignorati del tutto (in quel caso si vedono tutte e 3 le lingue, mai una pagina bianca). */
 [data-l]{display:none}
-#L-it:checked ~ .page [data-l="it"],
-#L-en:checked ~ .page [data-l="en"],
+[data-l="it"]{display:inline}
+#L-en:checked ~ .page [data-l="it"],
+#L-ru:checked ~ .page [data-l="it"]{display:none}
+#L-en:checked ~ .page [data-l="en"]{display:inline}
 #L-ru:checked ~ .page [data-l="ru"]{display:inline}
 /* stato attivo/focus dei pulsanti lingua, pilotato dai radio fratelli */
 #L-it:checked ~ .page label[for="L-it"],
