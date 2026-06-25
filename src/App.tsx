@@ -391,16 +391,16 @@ const extLink = (url: string) => (e: { preventDefault: () => void }) => { e.prev
 // Link «cerca su» le OTA: ricerca PRE-COMPILATA (nome + città + paese) sulla piattaforma — NON la
 // pagina esatta dell'hotel (quella richiede l'ID interno via API/affiliazione → roadmap). È una
 // ricerca: l'utente sceglie il risultato. Nessun ID inventato. Google Hotels aggrega i prezzi OTA.
+// Teniamo SOLO le piattaforme dove la ricerca per nome ARRIVA all'hotel specifico:
+// - Google Hotels: trova la scheda dell'hotel e mostra i prezzi di Booking/Expedia/Hotels.com con il
+//   link diretto alla prenotazione di QUELL'hotel (è così che si raggiunge l'offerta Expedia oggi).
+// - Booking / TripAdvisor: la loro ricerca matcha il nome dell'hotel → atterra sull'hotel.
+// Expedia/Hotels.com NON hanno un link per-nome alla scheda (il loro `destination=` è solo una località
+// e serve il loro hotel-ID via API/affiliazione → roadmap): un pulsante diretto sarebbe rotto, quindi
+// non lo mettiamo; l'utente raggiunge il prezzo Expedia/Hotels.com da Google Hotels.
 const OTA_SITES: { name: string; url: (q: string) => string }[] = [
-  // Google Hotels: aggregatore, gestisce bene il NOME hotel → mostra la scheda esatta + i prezzi OTA.
   { name: "Google Hotels", url: (q) => `https://www.google.com/travel/search?q=${q}` },
-  // Booking / TripAdvisor: la loro ricerca matcha il nome dell'hotel → ok diretta.
   { name: "Booking", url: (q) => `https://www.booking.com/searchresults.html?ss=${q}` },
-  // Expedia / Hotels.com: il loro `destination=` tratta il testo come LOCALITÀ (mostrava solo la zona,
-  // non l'hotel). Li facciamo cercare PER NOME sulla piattaforma via ricerca mirata (site:) → atterra
-  // sulla scheda dell'hotel.
-  { name: "Expedia", url: (q) => `https://www.google.com/search?q=${q}%20site%3Aexpedia.com` },
-  { name: "Hotels.com", url: (q) => `https://www.google.com/search?q=${q}%20site%3Ahotels.com` },
   { name: "TripAdvisor", url: (q) => `https://www.tripadvisor.com/Search?q=${q}` },
 ];
 const otaQuery = (h: { name: string; city?: string | null; country?: string | null }) =>

@@ -2,11 +2,19 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
-## [0.8.29] — 2026-06-25
-### Corretto — «Cerca su» Expedia/Hotels.com trovava solo la località, non l'hotel
-- Il parametro `destination=` di Expedia e Hotels.com (stesso gruppo) interpreta il testo come **località** → mostrava gli hotel della zona, non quello cercato. Ora i due pulsanti cercano l'hotel **per nome sulla piattaforma** via ricerca mirata (`site:expedia.com` / `site:hotels.com`) → si atterra sulla scheda dell'hotel. Google Hotels, Booking e TripAdvisor restano diretti (gestiscono già il nome).
+## [0.8.30] — 2026-06-25
+### Rimosso — pulsanti «Cerca su» Expedia e Hotels.com (non raggiungibili senza la loro API)
+- **Verità tecnica**: non esiste un link che porti per **nome** alla scheda di uno specifico hotel su Expedia/Hotels.com. Il loro `destination=` indirizza solo per **località** (mostrava la zona, non l'hotel); e il ripiego con la ricerca Google (v0.8.29) apriva Google — non Expedia — e spesso **non mostrava nemmeno l'hotel**. Per la scheda esatta serve l'**hotel-ID interno**, ottenibile solo con l'**affiliazione Expedia (EPS)** → roadmap.
+- Regola «niente funzioni rotte»: tolti i due pulsanti che non facevano ciò che promettevano. Restano i tre che **arrivano davvero all'hotel**: **Google Hotels** (e mostra il prezzo **Expedia/Hotels.com** di quell'hotel con link diretto), **Booking**, **TripAdvisor**.
+- `OTA_SITES` ridotto a 3 voci in `App.tsx`; NEWS della Guida aggiornata (it/en/ru) con la spiegazione e la via Google Hotels per il prezzo Expedia.
+### Aggiunto — presentazione in versione russa pronta all'invio
+- `presentazione/kidotel-radar-presentation-ru.html`: copia che **si apre già in russo** (lingua di default = RU, robusta anche nei visori che perdono lo stato dei radio) — da inviare a un destinatario russo senza dover cliccare RU. Il file trilingue resta invariato.
 ### Verificato
-- `tsc` pulito; anteprima: href Expedia/Hotels.com ora `…/search?q=Hotel%20…%20site%3Aexpedia.com`; 0 errori.
+- `tsc` pulito; parità i18n **276 × 3**; lista OTA = Google Hotels · Booking · TripAdvisor.
+
+## [0.8.29] — 2026-06-25
+### Corretto (poi superato da 0.8.30) — «Cerca su» Expedia/Hotels.com trovava solo la località
+- Tentativo di ricerca mirata `site:expedia.com`/`site:hotels.com` via Google: apriva però Google (non Expedia) e non garantiva l'hotel → rimosso in 0.8.30.
 
 ## [0.8.28] — 2026-06-25
 ### Aggiunto — «Cerca su» le OTA (Booking, Expedia, Hotels.com, Google Hotels, TripAdvisor)

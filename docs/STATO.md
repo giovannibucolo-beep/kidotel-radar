@@ -2,11 +2,16 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.29` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.30` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-25
 
-## Fatto v0.8.29 (2026-06-25) — fix «Cerca su» Expedia/Hotels.com (hotel, non solo località)
-- `destination=` di Expedia/Hotels.com trattava il testo come località → mostrava la zona, non l'hotel. Ora cercano per NOME via `site:expedia.com`/`site:hotels.com` (Google) → atterra sulla scheda hotel. Booking/Google Hotels/TripAdvisor restano diretti. Verificato href in anteprima; tsc ok.
+## Fatto v0.8.30 (2026-06-25) — tolti Expedia/Hotels.com (impossibili senza la loro API) + presentazione RU
+- Niente link per-nome alla scheda di un hotel su Expedia/Hotels.com: `destination=` è solo località e il ripiego Google apriva Google (non Expedia) senza mostrare l'hotel. Serve l'hotel-ID via affiliazione EPS (roadmap). Regola «niente funzioni rotte» → rimossi i 2 pulsanti. Restano i 3 che arrivano all'hotel: Google Hotels (mostra anche il prezzo Expedia/Hotels.com con link diretto), Booking, TripAdvisor. NEWS Guida aggiornata it/en/ru.
+- Presentazione RU pronta: `presentazione/kidotel-radar-presentation-ru.html` si apre già in russo (default RU robusto). Trilingue invariato.
+- Verificato: tsc pulito, parità 276×3, lista OTA = Google Hotels·Booking·TripAdvisor.
+
+## Fatto v0.8.29 (2026-06-25, superato) — tentativo `site:` per Expedia/Hotels.com
+- Apriva Google, non Expedia, e non mostrava l'hotel → rimpiazzato in 0.8.30.
 
 ## Fatto v0.8.28 (2026-06-25) — «Cerca su» le OTA (ricerca pre-compilata)
 - Espandi riga hotel (e CRM) → pulsanti «Cerca su» Google Hotels/Booking/Expedia/Hotels.com/TripAdvisor con ricerca pre-compilata (nome+città+paese). È una RICERCA, non la pagina esatta (quella = API/affiliazione, roadmap v0.5): nessun ID inventato. Riga sempre espandibile. `OTA_SITES`+`OtaLinks`, i18n `ota.find` it/en/ru, CSS `.ota-*`.

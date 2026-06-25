@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kidotel Radar — Presentazione</title>
+<meta name="description" content="Kidotel Radar — app desktop che scopre hotel per famiglie nel mondo e ne valuta il family-fit con la prova citata dal sito. Zero dati inventati.">
+<!-- Font del brand (Sora titoli + Manrope corpo) con fallback di sistema robusto. Nessuna dipendenza obbligatoria: se la rete manca, si usano i font di sistema. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============================================================================
+   KIDOTEL RADAR — presentazione trilingue (IT/EN/RU), file unico, zero build.
+   Veste: brand Kidotel (ink #222223, pesca #FFC27B, ambra #EF9F27; Sora+Manrope;
+   niente verde). Impronta International Typographic Style: griglia, scala
+   modulare, bianco attivo. Lo switch lingua è in CSS puro (radio :checked) → la
+   pagina funziona e si traduce ANCHE senza JavaScript.
+   ============================================================================ */
+:root{
+  --ink:#222223; --bg:#f5f5f5; --surface:#ffffff; --surface-2:#efeee8;
+  --peach:#ffc27b; --amber:#ef9f27; --deep:#a8650f; --soft:#fff3e4;
+  --line:#e5e3dc; --mut:#6b6b64; --mut-2:#8c8c84;
+  --on-brand:#222223;
+  /* scala tipografica modulare (ratio ~1.25) con clamp() fluido */
+  --step--1:clamp(.78rem,.76rem + .12vw,.86rem);
+  --step-0:clamp(.95rem,.9rem + .25vw,1.06rem);
+  --step-1:clamp(1.15rem,1.05rem + .5vw,1.4rem);
+  --step-2:clamp(1.45rem,1.25rem + 1vw,2rem);
+  --step-3:clamp(1.9rem,1.5rem + 2vw,3rem);
+  --step-4:clamp(2.5rem,1.8rem + 3.6vw,4.6rem);
+  --maxw:1180px; --gut:clamp(18px,4vw,40px);
+  --r:16px; --r-s:11px;
+  --font-head:"Sora","Sora Variable",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --font-body:"Manrope","Manrope Variable",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --ink:#f3f1ec; --bg:#161513; --surface:#201f1c; --surface-2:#262420;
+    --peach:#ffc27b; --amber:#f0a73a; --deep:#ffcf8e; --soft:#2c2620;
+    --line:#322f2a; --mut:#a8a59c; --mut-2:#8a877e; --on-brand:#222223;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--font-body); font-size:var(--step-0); line-height:1.6;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+h1,h2,h3,.h{font-family:var(--font-head); line-height:1.08; letter-spacing:-.02em; font-weight:700; margin:0}
+a{color:var(--deep)}
+:focus-visible{outline:3px solid var(--amber); outline-offset:3px; border-radius:4px}
+.wrap{max-width:var(--maxw); margin-inline:auto; padding-inline:var(--gut)}
+
+/* ---------- switch lingua: radio nascosti (focusabili) + label visibili ---------- */
+.lang-radio{position:absolute; width:1px; height:1px; opacity:0; pointer-events:none}
+/* ROBUSTEZZA: l'italiano è visibile di DEFAULT, SENZA dipendere da :checked. Così la pagina non è MAI
+   vuota — anche se un client di posta o un'anteprima ignorano lo stato dei radio, o se i CSS vengono
+   ignorati del tutto (in quel caso si vedono tutte e 3 le lingue, mai una pagina bianca). */
+[data-l]{display:none}
+[data-l="ru"]{display:inline}
+#L-it:checked ~ .page [data-l="ru"],
+#L-en:checked ~ .page [data-l="ru"]{display:none}
+#L-it:checked ~ .page [data-l="it"]{display:inline}
+#L-en:checked ~ .page [data-l="en"]{display:inline}
+/* stato attivo/focus dei pulsanti lingua, pilotato dai radio fratelli */
+#L-it:checked ~ .page label[for="L-it"],
+#L-en:checked ~ .page label[for="L-en"],
+#L-ru:checked ~ .page label[for="L-ru"]{background:var(--peach); color:var(--on-brand); border-color:var(--peach)}
+#L-it:focus-visible ~ .page label[for="L-it"],
+#L-en:focus-visible ~ .page label[for="L-en"],
+#L-ru:focus-visible ~ .page label[for="L-ru"]{outline:3px solid var(--amber); outline-offset:2px}
+
+/* ---------- header sticky ---------- */
+header.top{
+  position:sticky; top:0; z-index:50; background:color-mix(in srgb,var(--bg) 86%,transparent);
+  backdrop-filter:saturate(1.4) blur(10px); border-bottom:1px solid var(--line);
+}
+.top .wrap{display:flex; align-items:center; gap:16px; min-height:62px}
+.brand{display:flex; align-items:baseline; gap:9px; color:var(--ink); text-decoration:none}
+.brand svg{height:19px; width:auto; display:block; transform:translateY(2px)}
+.brand .suffix{font-family:var(--font-head); font-weight:600; font-size:15px; color:var(--mut)}
+.nav{display:none; gap:22px; margin-left:14px}
+.nav a{color:var(--mut); text-decoration:none; font-weight:600; font-size:14px}
+.nav a:hover{color:var(--ink)}
+.spacer{flex:1}
+.langs{display:flex; gap:6px; align-items:center; border:1px solid var(--line); border-radius:999px; padding:4px}
+.langs .lbl{font:inherit; font-weight:700; font-size:13px; line-height:1; letter-spacing:.02em;
+  padding:0 14px; border-radius:999px; border:1px solid transparent; color:var(--mut); cursor:pointer;
+  min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center}
+.langs .lbl:hover{color:var(--ink)}
+@media (min-width:900px){ .nav{display:flex} }
+
+/* ---------- sezioni ---------- */
+section{padding-block:clamp(56px,9vw,116px); border-top:1px solid var(--line)}
+section:first-of-type{border-top:none}
+.eyebrow{font-family:var(--font-head); font-weight:700; font-size:var(--step--1); letter-spacing:.14em; text-transform:uppercase; color:var(--deep)}
+.lead{font-size:var(--step-1); color:var(--mut); max-width:62ch}
+.sec-head{max-width:64ch; margin-bottom:clamp(28px,4vw,52px)}
+.sec-head h2{font-size:var(--step-3); margin:.5em 0 .35em}
+.sec-head p{margin:0; color:var(--mut); font-size:var(--step-1); max-width:60ch}
+
+/* ---------- hero ---------- */
+.hero{padding-top:clamp(48px,8vw,92px)}
+.hero h1{font-size:var(--step-4); font-weight:800; max-width:16ch; margin:.35em 0 .5em}
+.hero .lead{font-size:var(--step-1)}
+.hero-stats{display:flex; flex-wrap:wrap; gap:14px; margin-top:clamp(28px,4vw,44px)}
+.stat{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:16px 20px; min-width:140px}
+.stat b{font-family:var(--font-head); font-weight:800; font-size:var(--step-2); display:block; color:var(--ink); font-variant-numeric:tabular-nums}
+.stat span{font-size:13px; color:var(--mut)}
+.hero-accent{height:6px; border-radius:999px; margin-top:clamp(34px,5vw,56px);
+  background:linear-gradient(90deg,var(--peach),var(--amber) 55%,#f4d27a)}
+
+/* ---------- pipeline ---------- */
+.pipe{display:grid; gap:14px; grid-template-columns:1fr; margin-top:18px}
+.pstep{display:flex; gap:14px; align-items:flex-start; background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:18px 20px}
+.pstep .n{font-family:var(--font-head); font-weight:800; color:var(--deep); font-size:18px; min-width:1.4em}
+.pstep h3{font-size:var(--step-1)} .pstep p{margin:.35em 0 0; color:var(--mut); font-size:var(--step--1)}
+@media (min-width:760px){ .pipe{grid-template-columns:repeat(4,1fr)} .pstep{flex-direction:column} }
+
+/* ---------- griglia funzioni ---------- */
+.grid{display:grid; gap:16px; grid-template-columns:1fr}
+@media (min-width:640px){ .grid{grid-template-columns:1fr 1fr} }
+@media (min-width:980px){ .grid{grid-template-columns:1fr 1fr 1fr} }
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:22px 22px 24px; position:relative}
+.card .k{display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:9px; background:var(--soft); color:var(--deep); margin-bottom:14px}
+.card .k svg{width:18px; height:18px; display:block; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round}
+.card h3{font-size:var(--step-1); margin-bottom:6px}
+.card p{margin:0; color:var(--mut); font-size:var(--step--1)}
+.tag{display:inline-block; font-family:var(--font-head); font-weight:700; font-size:11px; letter-spacing:.08em; text-transform:uppercase; padding:3px 9px; border-radius:999px}
+.tag.impl{background:var(--soft); color:var(--deep)}
+.tag.road{background:transparent; color:var(--mut); border:1px dashed var(--mut-2)}
+
+/* ---------- scoring ---------- */
+.score-wrap{display:grid; gap:clamp(28px,5vw,56px); grid-template-columns:1fr}
+@media (min-width:880px){ .score-wrap{grid-template-columns:1.15fr .85fr; align-items:start} }
+.weights{display:flex; flex-direction:column; gap:12px}
+.wrow{display:grid; grid-template-columns:1fr; gap:5px}
+.wrow .top{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
+.wrow .lab{font-weight:600; font-size:var(--step-0)}
+.wrow .w{font-family:var(--font-head); font-weight:800; color:var(--deep); font-variant-numeric:tabular-nums}
+.track{height:10px; background:var(--surface-2); border-radius:999px; overflow:hidden}
+.fill{height:100%; border-radius:999px; background:linear-gradient(90deg,var(--peach),var(--amber)); width:var(--w,0); transition:width 1s cubic-bezier(.2,.7,.2,1)}
+.wrow.future .fill{background:repeating-linear-gradient(45deg,var(--mut-2),var(--mut-2) 6px,transparent 6px,transparent 12px); opacity:.7}
+.wrow.future .w{color:var(--mut)}
+.note-card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:24px}
+.note-card h3{font-size:var(--step-1); margin-bottom:10px}
+.note-card p{margin:0 0 12px; color:var(--mut); font-size:var(--step--1)}
+.proof{font-family:var(--font-head); font-style:normal; background:var(--soft); color:var(--deep); border-left:3px solid var(--peach); padding:12px 14px; border-radius:0 var(--r-s) var(--r-s) 0; font-size:var(--step--1)}
+
+/* ---------- roadmap / vincoli ---------- */
+.rlist{display:grid; gap:14px; grid-template-columns:1fr}
+@media (min-width:760px){ .rlist{grid-template-columns:1fr 1fr} }
+.ritem{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:20px 22px; border-left:4px solid var(--mut-2)}
+.ritem h3{font-size:var(--step-0); margin:10px 0 5px} .ritem p{margin:0; color:var(--mut); font-size:var(--step--1)}
+.constraints{display:grid; gap:12px; grid-template-columns:1fr; margin-top:18px}
+@media (min-width:760px){ .constraints{grid-template-columns:1fr 1fr} }
+.ci{display:flex; gap:12px; align-items:flex-start; font-size:var(--step--1); color:var(--mut)}
+.ci b{color:var(--ink); font-weight:700}
+.dot{flex:0 0 auto; width:8px; height:8px; border-radius:50%; background:var(--amber); margin-top:8px}
+
+/* ---------- market ---------- */
+.market{display:grid; gap:16px; grid-template-columns:1fr}
+@media (min-width:820px){ .market{grid-template-columns:1fr 1fr} }
+.mcard{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:24px}
+.mcard h3{font-size:var(--step-1); margin-bottom:8px} .mcard p{margin:0; color:var(--mut); font-size:var(--step-0)}
+
+/* ---------- footer ---------- */
+footer{border-top:1px solid var(--line); padding-block:44px; color:var(--mut); font-size:13px}
+footer .wrap{display:flex; flex-wrap:wrap; gap:14px 28px; align-items:center; justify-content:space-between}
+footer .pr{max-width:60ch}
+
+/* ---------- reveal allo scroll ----------
+   IMPORTANTE: il contenuto è VISIBILE di default. L'effetto "appari allo scroll" (che parte da
+   opacity:0) si attiva SOLO quando il JavaScript è attivo — cioè quando <html> riceve la classe .js.
+   Così, in qualsiasi visualizzatore che NON esegue il JS (anteprima email, pannelli sandbox, Quick
+   Look, JS disattivato), la pagina resta piena e leggibile invece di apparire vuota. */
+.js .rv{opacity:0; transform:translateY(16px); transition:opacity .7s ease, transform .7s ease}
+.js .rv.in{opacity:1; transform:none}
+@media (prefers-reduced-motion:reduce){ .js .rv{opacity:1; transform:none; transition:none} .fill{transition:none} }
+
+.skip{position:absolute; left:-9999px; top:auto; background:var(--ink); color:var(--bg); padding:10px 16px; border-radius:8px; z-index:100}
+.skip:focus{left:12px; top:10px}
+</style>
+<!-- Attiva l'effetto reveal SOLO se il JS gira (aggiunge .js a <html> prima del primo paint → niente
+     flash). Se questo script non viene eseguito (JS off / anteprima sandbox), .js non c'è e il
+     contenuto resta visibile: la pagina non è mai vuota. -->
+<script>document.documentElement.className += " js";</script>
+</head>
+<body>
+
+<!-- radio dello switch lingua: stanno PRIMA di .page così il combinatore di fratelli ~ può pilotare la visibilità. it = default. -->
+<input class="lang-radio" type="radio" name="lang" id="L-it">
+<input class="lang-radio" type="radio" name="lang" id="L-en">
+<input class="lang-radio" type="radio" name="lang" id="L-ru" checked>
+
+<div class="page">
+<a class="skip" href="#main"><span data-l="it">Vai al contenuto</span><span data-l="en">Skip to content</span><span data-l="ru">Перейти к содержанию</span></a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Kidotel Radar">
+      <!-- wordmark ufficiale (stessi tracciati di src/components/Wordmark.tsx) -->
+      <svg viewBox="0 0 1108 450" fill="currentColor" aria-hidden="true"><path d="M221.839 258.074H255.435V68.7896H192.742V97.5928H221.839V258.074Z"/><path d="M231.456 43.4938C238.802 43.4938 244.457 41.348 248.213 37.1802C251.886 33.0949 253.702 27.9779 253.702 21.9119C253.702 15.8459 251.845 10.729 248.213 6.6437C244.457 2.43462 238.802 0.330078 231.456 0.330078C224.109 0.330078 218.455 2.43462 214.576 6.60243C210.778 10.6877 208.839 15.8459 208.839 21.9119C208.839 27.9779 210.778 33.1361 214.576 37.2214C218.455 41.3892 224.151 43.4938 231.456 43.4938Z"/><path d="M316.271 234.635C324.484 243.796 334.389 251.059 345.698 256.176C357.048 261.293 369.76 263.893 383.503 263.893C398.939 263.893 413.137 260.509 425.684 253.824C436.167 248.212 445.123 240.165 452.305 229.807V258.074H481.113V0H447.187V91.8157C440.996 84.1403 433.691 77.8679 425.271 73.0811C413.055 66.1486 398.774 62.5997 382.843 62.5997C368.81 62.5997 355.975 65.3232 344.625 70.6878C333.316 76.0523 323.535 83.3975 315.569 92.5997C307.645 101.719 301.454 112.283 297.162 124.003C292.91 135.681 290.764 148.102 290.764 160.853V165.64C290.764 178.845 292.993 191.513 297.368 203.191C301.743 214.911 308.099 225.475 316.312 234.635H316.271ZM332.326 127.428C337.32 116.988 344.542 108.611 353.787 102.586C362.991 96.5612 374.011 93.5076 386.599 93.5076C398.403 93.5076 409.051 96.1073 418.337 101.224C427.541 106.3 434.929 113.439 440.212 122.476C445.495 131.472 448.219 142.118 448.219 154.085V170.509C448.219 182.971 445.536 194.072 440.171 203.563C434.888 212.971 427.541 220.358 418.337 225.433C409.092 230.55 398.527 233.15 386.97 233.15C374.589 233.15 363.569 230.179 354.241 224.36C344.914 218.542 337.609 210.289 332.491 199.849C327.332 189.285 324.69 177.029 324.69 163.329C324.69 149.629 327.249 138.033 332.326 127.469V127.428Z"/><path d="M538.688 232.944C547.107 242.352 557.591 249.945 569.807 255.516C582.065 261.087 596.387 263.934 612.442 263.934C628.497 263.934 642.86 261.087 655.2 255.516C667.54 249.945 678.065 242.352 686.526 232.944C694.945 223.576 701.384 212.93 705.635 201.334C709.886 189.739 712.032 177.772 712.032 165.681V160.894C712.032 148.845 709.803 136.754 705.429 125.034C701.054 113.274 694.491 102.627 685.948 93.3838C677.405 84.1403 666.88 76.63 654.663 71.0179C642.406 65.447 628.167 62.5997 612.401 62.5997C596.634 62.5997 582.726 65.447 570.468 71.0179C558.251 76.5887 547.727 84.099 539.183 93.3838C530.64 102.627 524.036 113.274 519.537 124.993C515.039 136.713 512.769 148.762 512.769 160.853V165.64C512.769 177.73 514.998 189.739 519.372 201.334C523.747 212.93 530.227 223.576 538.647 232.902L538.688 232.944ZM554.66 128.006C559.861 117.689 567.496 109.354 577.278 103.287C587.059 97.2215 598.904 94.1678 612.401 94.1678C625.897 94.1678 638.113 97.2215 647.895 103.287C657.676 109.354 665.271 117.648 670.512 128.006C675.795 138.446 678.436 150.33 678.436 163.287C678.436 176.245 675.836 187.799 670.636 198.239C665.518 208.597 658.007 217.015 648.308 223.287C638.65 229.56 626.557 232.737 612.401 232.737C598.244 232.737 586.481 229.56 576.824 223.287C567.125 217.015 559.613 208.556 554.495 198.239C549.336 187.799 546.695 176.039 546.695 163.287C546.695 150.536 549.377 138.446 554.619 128.006H554.66Z"/><path d="M749.673 196.465C749.673 211.981 752.397 224.567 757.762 233.934C763.251 243.508 771.052 250.399 781.04 254.36C790.615 258.198 802.089 260.138 815.089 260.138H847.984V228.611H811.334C802.006 228.611 794.783 226.176 789.913 221.389C785.002 216.561 782.608 209.629 782.608 200.22V96.5612H847.984V68.7896H782.608V11.6369H749.714V68.7896H717.191V96.5612H749.714V196.465H749.673Z"/><path d="M881.579 232.779C889.256 242.228 899.162 249.862 911.089 255.475C923.017 261.087 937.173 263.893 953.228 263.893C968.087 263.893 981.541 261.376 993.18 256.382C1004.9 251.348 1014.77 244.127 1022.44 234.883C1030.16 225.598 1035.32 214.415 1037.71 201.706L1038.62 196.795H1006.39L1005.64 199.972C1003.62 208.762 998.05 216.52 989.094 223.081C980.055 229.684 967.963 233.067 953.187 233.067C939.278 233.067 927.681 229.972 918.725 223.865C909.727 217.758 903 209.34 898.666 198.817C895.282 190.646 893.177 181.444 892.393 171.499H1040.85V154.044C1040.85 138.446 1037.47 123.631 1030.86 109.972C1024.18 96.2311 1014.06 84.8005 1000.86 76.011C987.567 67.1389 970.852 62.641 951.165 62.641C935.77 62.641 922.109 65.4883 910.511 71.1004C898.955 76.7125 889.215 84.2641 881.579 93.5901C873.985 102.834 868.248 113.439 864.575 125.076C860.943 136.589 859.086 148.514 859.086 160.564V165.351C859.086 177.607 860.943 189.656 864.575 201.169C868.248 212.806 873.944 223.453 881.538 232.82L881.579 232.779ZM898.666 127.263C903 117.07 909.603 108.817 918.312 102.668C926.897 96.6025 937.958 93.5076 951.165 93.5076C964.372 93.5076 974.36 96.2311 982.656 101.554C990.951 106.919 997.349 114.388 1001.68 123.755C1004.41 129.656 1006.3 136.217 1007.34 143.398H893.879C894.993 137.497 896.603 132.05 898.666 127.221V127.263Z"/><path d="M1047.7 0V29.1334H1074.07V258.074H1108V0H1047.7Z"/><path d="M626.598 416.988C291.136 416.988 196.292 269.711 139.625 181.733C134.796 174.223 130.215 167.125 125.798 160.564C107.473 133.453 89.1072 119.835 74.9508 112.985L176.976 0H135.786L34.2561 113.934V0H0V258.074H34.2561V158.088L51.1366 139.395C56.7909 140.55 76.6017 146.781 98.4348 179.051C102.686 185.365 107.143 192.256 111.848 199.601C141.234 245.241 181.516 307.758 259.397 359.257C351.765 420.33 471.868 450 626.598 450C908.654 450 1088.64 322.531 1096.15 317.125L1076.84 290.344C1075.06 291.623 897.469 416.988 626.598 416.988Z"/></svg>
+      <span class="suffix">Radar</span>
+    </a>
+    <nav class="nav" aria-label="Sezioni">
+      <a href="#what"><span data-l="it">Cos'è</span><span data-l="en">Overview</span><span data-l="ru">Обзор</span></a>
+      <a href="#features"><span data-l="it">Funzioni</span><span data-l="en">Features</span><span data-l="ru">Функции</span></a>
+      <a href="#scoring"><span data-l="it">Criteri</span><span data-l="en">Scoring</span><span data-l="ru">Критерии</span></a>
+      <a href="#market"><span data-l="it">Mercato</span><span data-l="en">Market</span><span data-l="ru">Рынок</span></a>
+      <a href="#roadmap"><span data-l="it">Roadmap</span><span data-l="en">Roadmap</span><span data-l="ru">Планы</span></a>
+    </nav>
+    <span class="spacer" style="flex:1"></span>
+    <fieldset class="langs" style="border:1px solid var(--line); margin:0; padding:4px">
+      <legend class="lang-radio" style="position:absolute">Lingua / Language / Язык</legend>
+      <label class="lbl" for="L-it" lang="it">IT</label>
+      <label class="lbl" for="L-en" lang="en">EN</label>
+      <label class="lbl" for="L-ru" lang="ru">RU</label>
+    </fieldset>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ===================== HERO ===================== -->
+<section class="hero" id="top">
+  <div class="wrap">
+    <p class="eyebrow rv"><span data-l="it">Scoperta e valutazione · scala mondiale</span><span data-l="en">Discovery &amp; vetting · worldwide</span><span data-l="ru">Поиск и оценка · по всему миру</span></p>
+    <h1 class="rv">
+      <span data-l="it">Trova gli hotel per famiglie di tutto il mondo. Con la prova.</span>
+      <span data-l="en">Find the world's family hotels. With the proof.</span>
+      <span data-l="ru">Находит семейные отели всего мира. С доказательством.</span>
+    </h1>
+    <p class="lead rv">
+      <span data-l="it">App desktop che legge i siti ufficiali in qualsiasi lingua e assegna a ogni hotel un punteggio <b>family-fit 0–100</b>: ogni servizio per famiglie conta solo se accompagnato dalla frase citata dal sito e verificata parola per parola. <b>Zero dati inventati.</b></span>
+      <span data-l="en">A desktop app that reads official websites in any language and gives each hotel a <b>0–100 family-fit score</b>: a family service counts only when backed by the sentence quoted from the site and verified word for word. <b>Zero invented data.</b></span>
+      <span data-l="ru">Десктопное приложение читает официальные сайты на любом языке и присваивает каждому отелю <b>рейтинг family-fit 0–100</b>: услуга для семей засчитывается только при наличии фразы с сайта, проверенной слово в слово. <b>Никаких выдуманных данных.</b></span>
+    </p>
+    <div class="hero-stats rv">
+      <div class="stat"><b>0–100</b><span data-l="it">punteggio family-fit</span><span data-l="en">family-fit score</span><span data-l="ru">рейтинг family-fit</span></div>
+      <div class="stat"><b>IT · EN · RU</b><span data-l="it">interfaccia e manuale</span><span data-l="en">interface &amp; manual</span><span data-l="ru">интерфейс и руководство</span></div>
+      <div class="stat"><b>~190</b><span data-l="it">paesi scansionabili</span><span data-l="en">scannable countries</span><span data-l="ru">стран для сканирования</span></div>
+      <div class="stat"><b>100%<span data-l="it"> locale</span><span data-l="en"> local</span><span data-l="ru"> локально</span></b><span data-l="it">database SQLite, nessun cloud</span><span data-l="en">SQLite database, no cloud</span><span data-l="ru">база SQLite, без облака</span></div>
+    </div>
+    <div class="hero-accent rv" role="presentation"></div>
+  </div>
+</section>
+
+<!-- ===================== COS'È + PIPELINE ===================== -->
+<section id="what">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <p class="eyebrow"><span data-l="it">Cos'è</span><span data-l="en">Overview</span><span data-l="ru">Обзор</span></p>
+      <h2><span data-l="it">Riempie il catalogo dell'offerta, senza ricerca manuale</span><span data-l="en">It fills the supply catalogue, without manual research</span><span data-l="ru">Наполняет каталог предложения без ручного поиска</span></h2>
+      <p>
+        <span data-l="it">Kidotel (kidotel.co) è una piattaforma pre-lancio di scoperta hotel per famiglie. Il collo di bottiglia è l'<b>offerta</b>: gli hotel verificati a mano sono pochi. Radar automatizza il percorso scopri → arricchisci → valuta, mantenendo ogni dato verificabile.</span>
+        <span data-l="en">Kidotel (kidotel.co) is a pre-launch family-hotel discovery platform. The bottleneck is <b>supply</b>: hand-verified hotels are few. Radar automates the discover → enrich → score path while keeping every data point verifiable.</span>
+        <span data-l="ru">Kidotel (kidotel.co) — платформа для поиска семейных отелей на стадии запуска. Узкое место — <b>предложение</b>: проверенных вручную отелей мало. Radar автоматизирует путь «найти → обогатить → оценить», сохраняя проверяемость каждого факта.</span>
+      </p>
+    </div>
+    <div class="pipe rv">
+      <div class="pstep"><span class="n">1</span><div><h3><span data-l="it">Scopri</span><span data-l="en">Discover</span><span data-l="ru">Найти</span></h3><p><span data-l="it">OpenStreetMap (Nominatim → Overpass) trova gli hotel di un'area e li salva in un database SQLite locale.</span><span data-l="en">OpenStreetMap (Nominatim → Overpass) finds an area's hotels and stores them in a local SQLite database.</span><span data-l="ru">OpenStreetMap (Nominatim → Overpass) находит отели области и сохраняет их в локальную базу SQLite.</span></p></div></div>
+      <div class="pstep"><span class="n">2</span><div><h3><span data-l="it">Arricchisci</span><span data-l="en">Enrich</span><span data-l="ru">Обогатить</span></h3><p><span data-l="it">Legge il sito ufficiale dell'hotel (qualsiasi lingua) e ne estrae i segnali per famiglie, l'email di contatto, le stelle, la fascia di prezzo.</span><span data-l="en">Reads the hotel's official website (any language) and extracts family signals, contact email, stars and price range.</span><span data-l="ru">Читает официальный сайт отеля (любой язык) и извлекает семейные сигналы, контактный email, звёзды и ценовой диапазон.</span></p></div></div>
+      <div class="pstep"><span class="n">3</span><div><h3><span data-l="it">Valuta</span><span data-l="en">Score</span><span data-l="ru">Оценить</span></h3><p><span data-l="it">Calcola il punteggio family-fit 0–100 con un riconoscitore multilingue a regole, salvando la prova citata per ogni servizio.</span><span data-l="en">Computes the 0–100 family-fit score with a multilingual rule-based recognizer, saving the cited proof for each service.</span><span data-l="ru">Вычисляет рейтинг family-fit 0–100 многоязычным распознавателем на правилах, сохраняя цитату-доказательство для каждой услуги.</span></p></div></div>
+      <div class="pstep"><span class="n">4</span><div><h3><span data-l="it">Acquisisci</span><span data-l="en">Acquire</span><span data-l="ru">Привлечь</span></h3><p><span data-l="it">Ordina gli hotel contattabili per valore atteso, genera l'email di contatto e segue lo stato della trattativa nel CRM.</span><span data-l="en">Ranks contactable hotels by expected value, drafts the outreach email and tracks the deal status in the CRM.</span><span data-l="ru">Ранжирует доступные для контакта отели по ожидаемой ценности, готовит письмо и ведёт статус сделки в CRM.</span></p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FUNZIONI ===================== -->
+<section id="features">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <p class="eyebrow"><span data-l="it">Funzioni · implementate</span><span data-l="en">Features · implemented</span><span data-l="ru">Функции · реализованы</span></p>
+      <h2><span data-l="it">Tutto ciò che fa oggi</span><span data-l="en">Everything it does today</span><span data-l="ru">Всё, что он умеет сегодня</span></h2>
+      <p><span data-l="it">Ogni scheda è una funzione realmente presente nell'app installata. Il badge la distingue da ciò che è in arrivo.</span><span data-l="en">Each card is a feature actually present in the installed app. The badge marks it apart from what's coming.</span><span data-l="ru">Каждая карточка — функция, реально присутствующая в приложении. Бейдж отличает её от планируемого.</span></p>
+    </div>
+    <div class="grid">
+      <article class="card rv"><span class="k"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+        <span class="tag impl">IMPL</span>
+        <h3><span data-l="it">Scoperta mondiale</span><span data-l="en">Worldwide discovery</span><span data-l="ru">Поиск по всему миру</span></h3>
+        <p><span data-l="it">Punta un continente, paese, regione o città e raccoglie i suoi hotel da OpenStreetMap. Li sfogli per paese o in elenco ordinato, con ricerca per nome.</span><span data-l="en">Aim at a continent, country, region or city and collect its hotels from OpenStreetMap. Browse them by country or as a sorted list, with name search.</span><span data-l="ru">Наведитесь на континент, страну, регион или город и соберите отели из OpenStreetMap. Просмотр по стране или списком с поиском по названию.</span></p>
+      </article>
+      <article class="card rv"><span class="k"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></span>
+        <span class="tag impl">IMPL</span>
+        <h3><span data-l="it">Scansione a ripresa</span><span data-l="en">Resumable scan</span><span data-l="ru">Возобновляемое сканирование</span></h3>
+        <p><span data-l="it">«Completa tutti» copre ogni paese del mondo (~190, scelti anche da una lista con ricerca) e <b>riprende dal punto in cui si era fermato</b>; salta le regioni già fatte di recente.</span><span data-l="en">«Complete all» covers every country (~190, also picked from a searchable list) and <b>resumes where it stopped</b>; it skips regions already done recently.</span><span data-l="ru">«Завершить все» охватывает каждую страну (~190, выбор из списка с поиском) и <b>продолжает с места остановки</b>; пропускает недавно сделанные регионы.</span></p>
+      </article>
+      <article class="card rv"><span class="k"><svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.6L21 9.3l-4.5 4.3 1.1 6.1L12 17l-5.6 2.7 1.1-6.1L3 9.3l6.4-.7z"/></svg></span>
+        <span class="tag impl">IMPL</span>
+        <h3><span data-l="it">Punteggio family-fit con prova</span><span data-l="en">Family-fit score with proof</span><span data-l="ru">Рейтинг family-fit с доказательством</span></h3>
+        <p><span data-l="it">0–100 da un riconoscitore a regole multilingue — gratis, senza alcuna chiave API. Ogni servizio mostra la frase citata dal sito; «Prova» le elenca tutte.</span><span data-l="en">0–100 from a multilingual rule-based recognizer — free, no API key. Each service shows the quote from the site; «Proof» lists them all.</span><span data-l="ru">0–100 от многоязычного распознавателя на правилах — бесплатно, без ключа API. Каждая услуга показывает цитату с сайта; «Доказательство» перечисляет все.</span></p>
+      </article>
+      <article class="card rv"><span class="k"><svg viewBox="0 0 24 24"><path d="M12 4l2 4 4.4.6-3.2 3.1.8 4.3L12 14l-4 2.1.8-4.3L5.6 8.6 10 8z"/></svg></span>
+        <span class="tag impl">IMPL</span>
+        <h3><span data-l="it">Stelle ★ e Lusso</span><span data-l="en">Stars ★ and Luxury</span><span data-l="ru">Звёзды ★ и Люкс</span></h3>
+        <p><span data-l="it">Classificazione ufficiale a stelle (1–5) presa da OpenStreetMap, con il bollino «Lusso» per i 5 stelle Superior. Dato reale: dove manca, non si mostra nulla.</span><span data-l="en">Official star rating (1–5) taken from OpenStreetMap, with a «Luxury» badge for 5-star Superior. Real data: where missing, nothing is shown.</span><span data-l="ru">Официальная классификация по звёздам (1–5) из OpenStreetMap, с пометкой «Люкс» для 5★ Superior. Реальные данные: где нет — не показывается.</span></p>
+      </article>
+      <article class="card rv"><span class="k"><svg viewBox="0 0 24 24"><path d="M12 3v18M7 7h7a3 3 0 010 6H7M7 13h8a3 3 0 010 6H6"/></svg></span>
+        <span class="tag impl">IMPL</span>
+        <h3><span data-l="it">Fascia di costo € → €€€€€</span><span data-l="en">Cost range € → €€€€€</span><span data-l="ru">Уровень цен € → €€€€€</span></h3>
+        <p><span data-l="it">Quanto è caro l'hotel: se il sito pubblica una fascia di prezzo (schema.org) si usa quel dato reale, altrimenti una stima da stelle e paese — dichiarata come tale.</span><span data-l="en">How pricey the hotel is: if the site publishes a price range (schema.org) that real data is used, otherwise an estimate from stars and country — labelled as such.</span><span data-l="ru">Насколько дорог отель: если сайт публикует ценовой диапазон (schema.org), используется он, иначе оценка по звёздам и стране — помеченная как оценка.</span></p>
+      </article>
+      <article class="card rv"><span class="k"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 01-12 7.7L3 21l1.8-6A8.5 8.5 0 1121 11.5z"/></svg></span>
+        <span class="tag impl">IMPL</span>
+        <h3><span data-l="it">Recensioni + traduzione</span><span data-l="en">Reviews + translation</span><span data-l="ru">Отзывы + перевод</span></h3>
+        <p><span data-l="it">Importa le recensioni reali raccolte (JSON), le mostra espandendo la riga e le traduce nella lingua dell'app. Anche le prove dello scoring hanno un «Traduci».</span><span data-l="en">Imports the real reviews collected (JSON), shows them on row expand and translates them into the app language. The scoring proofs also have a «Translate».</span><span data-l="ru">Импортирует собранные реальные отзывы (JSON), показывает при раскрытии строки и переводит на язык приложения. У доказательств тоже есть «Перевести».</span></p>
+      </article>
+      <article class="card rv"><span class="k"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1018 0 9 9 0 10-18 0zM3 12h18M12 3a14 14 0 000 18 14 14 0 000-18z"/></svg></span>
+        <span class="tag impl">IMPL</span>
+        <h3><span data-l="it">Copertura per paese</span><span data-l="en">Coverage by country</span><span data-l="ru">Покрытие по странам</span></h3>
+        <p><span data-l="it">Per ogni paese: hotel trovati, valutati e family. «Misura» calcola quanti hotel esistono davvero su OpenStreetMap → il grado reale di copertura.</span><span data-l="en">Per country: hotels found, scored and family. «Measure» computes how many hotels actually exist on OpenStreetMap → the real coverage grade.</span><span data-l="ru">По каждой стране: найдено, оценено и семейных. «Измерить» вычисляет, сколько отелей реально есть в OpenStreetMap → реальная степень покрытия.</span></p>
+      </article>
+      <article class="card rv"><span class="k"><svg viewBox="0 0 24 24"><path d="M4 5h16v12H4zM4 17l5 4M20 17l-5 4M8 9h8M8 13h5"/></svg></span>
+        <span class="tag impl">IMPL</span>
+        <h3><span data-l="it">CRM acquisizione partner</span><span data-l="en">Partner-acquisition CRM</span><span data-l="ru">CRM привлечения партнёров</span></h3>
+        <p><span data-l="it">Tutto l'archivio contattabile ordinato per valore atteso, con filtri cumulabili e una pipeline di stato. «Scrivi email» genera un contatto professionale in inglese, personalizzato con le prove; gli indirizzi non recapitabili (MX/DNS) sono segnalati.</span><span data-l="en">The whole contactable archive ranked by expected value, with cumulative filters and a status pipeline. «Write email» drafts a professional English outreach, personalized with the proof; undeliverable addresses (MX/DNS) are flagged.</span><span data-l="ru">Весь доступный для контакта архив по ожидаемой ценности, с кумулятивными фильтрами и воронкой статусов. «Написать email» готовит профессиональное письмо на английском с доказательствами; недоставляемые адреса (MX/DNS) помечаются.</span></p>
+      </article>
+      <article class="card rv"><span class="k"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 19v-6M12 19V9M16 19v-9M20 19V7"/></svg></span>
+        <span class="tag impl">IMPL</span>
+        <h3><span data-l="it">Valore atteso (redditività)</span><span data-l="en">Expected value (revenue)</span><span data-l="ru">Ожидаемая ценность</span></h3>
+        <p><span data-l="it">Stima quanto vale ogni hotel come partner (valore prenotazione × indice paese × commissione × probabilità × volume). È una <b>stima per dare priorità</b>, con manopole regolabili — non un dato verificato.</span><span data-l="en">Estimates each hotel's worth as a partner (booking value × country index × commission × probability × volume). It is an <b>estimate for prioritizing</b>, with adjustable knobs — not verified data.</span><span data-l="ru">Оценивает ценность отеля как партнёра (стоимость брони × индекс страны × комиссия × вероятность × объём). Это <b>оценка для приоритизации</b> с регуляторами — не проверенный факт.</span></p>
+      </article>
+      <article class="card rv"><span class="k"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-3-6 3zM9 7h6M9 11h6"/></svg></span>
+        <span class="tag impl">IMPL</span>
+        <h3><span data-l="it">Infografica stampabile</span><span data-l="en">Printable infographic</span><span data-l="ru">Печатная инфографика</span></h3>
+        <p><span data-l="it">Un cruscotto visivo dai tuoi dati reali — numeri chiave, distribuzione dei punteggi, top paesi, copertura per continente, funnel CRM, valore atteso — stampabile in PDF dal browser di sistema.</span><span data-l="en">A visual dashboard from your real data — key figures, score distribution, top countries, coverage by continent, CRM funnel, expected value — printable to PDF from the system browser.</span><span data-l="ru">Визуальная панель из ваших реальных данных — ключевые числа, распределение оценок, топ стран, покрытие по континентам, воронка CRM, ожидаемая ценность — печать в PDF из браузера.</span></p>
+      </article>
+      <article class="card rv"><span class="k"><svg viewBox="0 0 24 24"><path d="M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span>
+        <span class="tag impl">IMPL</span>
+        <h3><span data-l="it">Dati, backup ed export</span><span data-l="en">Data, backup &amp; export</span><span data-l="ru">Данные, бэкап и экспорт</span></h3>
+        <p><span data-l="it">L'intero archivio è un singolo file <code>.sqlite</code> esportabile/importabile. «Esporta selezione» compone il gruppo da condividere (ambito, fascia di voto, migliori N, filtri) in CSV o JSON con le prove.</span><span data-l="en">The whole archive is a single exportable/importable <code>.sqlite</code> file. «Export selection» composes the group to share (scope, score range, top N, filters) as CSV or JSON with the proofs.</span><span data-l="ru">Весь архив — один файл <code>.sqlite</code> для экспорта/импорта. «Экспорт выборки» формирует набор (охват, диапазон оценок, лучшие N, фильтры) в CSV или JSON с доказательствами.</span></p>
+      </article>
+      <article class="card rv"><span class="k"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zM9.5 9.5a2.5 2.5 0 015 0c0 1.7-2.5 2-2.5 4M12 17.5h.01"/></svg></span>
+        <span class="tag impl">IMPL</span>
+        <h3><span data-l="it">Manuale e lingue</span><span data-l="en">Manual &amp; languages</span><span data-l="ru">Руководство и языки</span></h3>
+        <p><span data-l="it">Interfaccia e manuale in italiano, inglese e russo. Il manuale integrato mostra screenshot reali aggiornati ad ogni release; un ticker «in onda» fa scorrere le scansioni in corso coi dati live.</span><span data-l="en">Interface and manual in Italian, English and Russian. The built-in manual shows real screenshots refreshed every release; a «live» ticker scrolls the running scans with live data.</span><span data-l="ru">Интерфейс и руководство на итальянском, английском и русском. Встроенное руководство показывает реальные скриншоты, обновляемые с каждым релизом; бегущая строка «в эфире» показывает идущие сканирования вживую.</span></p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CRITERI / SCORING ===================== -->
+<section id="scoring">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <p class="eyebrow"><span data-l="it">Criteri</span><span data-l="en">Scoring</span><span data-l="ru">Критерии</span></p>
+      <h2><span data-l="it">Come nasce il punteggio family-fit</span><span data-l="en">How the family-fit score is built</span><span data-l="ru">Как формируется рейтинг family-fit</span></h2>
+      <p><span data-l="it">Una somma pesata di segnali. Ogni segnale vale solo se trovato e <b>verificato verbatim</b> sul sito ufficiale. Pesi reali (su 100):</span><span data-l="en">A weighted sum of signals. Each signal counts only if found and <b>verified verbatim</b> on the official site. Real weights (out of 100):</span><span data-l="ru">Взвешенная сумма сигналов. Сигнал засчитывается, только если найден и <b>проверен дословно</b> на официальном сайте. Реальные веса (из 100):</span></p>
+    </div>
+    <div class="score-wrap">
+      <div class="weights rv">
+        <div class="wrow"><div class="top"><span class="lab"><span data-l="it">Miniclub / animazione bambini</span><span data-l="en">Kids club / children's animation</span><span data-l="ru">Мини-клуб / детская анимация</span></span><span class="w">22</span></div><div class="track"><span class="fill" style="--w:88%"></span></div></div>
+        <div class="wrow"><div class="top"><span class="lab"><span data-l="it">Strutture per bimbi (piscina, area giochi)</span><span data-l="en">Kids facilities (pool, play area)</span><span data-l="ru">Детская инфраструктура (бассейн, игровая)</span></span><span class="w">18</span></div><div class="track"><span class="fill" style="--w:72%"></span></div></div>
+        <div class="wrow"><div class="top"><span class="lab"><span data-l="it">Camere / suite family</span><span data-l="en">Family rooms / suites</span><span data-l="ru">Семейные номера / люксы</span></span><span class="w">14</span></div><div class="track"><span class="fill" style="--w:56%"></span></div></div>
+        <div class="wrow"><div class="top"><span class="lab"><span data-l="it">Childcare / baby-sitting</span><span data-l="en">Childcare / baby-sitting</span><span data-l="ru">Уход за детьми / няня</span></span><span class="w">12</span></div><div class="track"><span class="fill" style="--w:48%"></span></div></div>
+        <div class="wrow"><div class="top"><span class="lab"><span data-l="it">Menù e ristorazione bimbi</span><span data-l="en">Kids dining and menu</span><span data-l="ru">Детское меню и питание</span></span><span class="w">10</span></div><div class="track"><span class="fill" style="--w:40%"></span></div></div>
+        <div class="wrow"><div class="top"><span class="lab"><span data-l="it">Attività per fasce d'età</span><span data-l="en">Age-appropriate activities</span><span data-l="ru">Занятия по возрасту</span></span><span class="w">10</span></div><div class="track"><span class="fill" style="--w:40%"></span></div></div>
+        <div class="wrow"><div class="top"><span class="lab"><span data-l="it">Sicurezza bambini</span><span data-l="en">Child safety</span><span data-l="ru">Детская безопасность</span></span><span class="w">8</span></div><div class="track"><span class="fill" style="--w:32%"></span></div></div>
+        <div class="wrow future"><div class="top"><span class="lab"><span data-l="it">Sentiment recensioni genitori <span class="tag road" style="margin-left:6px">Roadmap</span></span><span data-l="en">Parent-review sentiment <span class="tag road" style="margin-left:6px">Roadmap</span></span><span data-l="ru">Тональность отзывов родителей <span class="tag road" style="margin-left:6px">Планы</span></span></span><span class="w">6</span></div><div class="track"><span class="fill" style="--w:24%"></span></div></div>
+      </div>
+      <div class="note-card rv">
+        <h3><span data-l="it">La regola d'oro: zero dati inventati</span><span data-l="en">The golden rule: zero invented data</span><span data-l="ru">Золотое правило: никаких выдуманных данных</span></h3>
+        <p><span data-l="it">Il riconoscitore estrae un servizio solo se trova la frase sul sito; poi il programma <b>ri-verifica da solo</b> che quella citazione esista davvero nel testo (confronto esatto). Se non c'è → il dato è scartato, mai indovinato. Nessun sito → punteggio 0.</span><span data-l="en">The recognizer extracts a service only if it finds the sentence on the site; then the program <b>re-verifies on its own</b> that the quote truly exists in the text (exact match). If not → the data is discarded, never guessed. No website → score 0.</span><span data-l="ru">Распознаватель извлекает услугу, только если находит фразу на сайте; затем программа <b>сама перепроверяет</b>, что цитата действительно есть в тексте (точное совпадение). Если нет → данные отбрасываются, не угадываются. Нет сайта → оценка 0.</span></p>
+        <p class="proof">«… miniclub e menù per bambini …» — <span data-l="it">citato e verificato dal sito</span><span data-l="en">quoted &amp; verified from the site</span><span data-l="ru">процитировано и проверено с сайта</span></p>
+        <p style="margin-top:14px"><span data-l="it">Il vero discriminante «family-first»: miniclub + childcare + attività per età — non la semplice «camera family». Le 7 dimensioni attive sommano 94; il sentiment recensioni (6) è in arrivo.</span><span data-l="en">The real «family-first» discriminator: kids club + childcare + age activities — not a mere «family room». The 7 active dimensions sum to 94; review sentiment (6) is upcoming.</span><span data-l="ru">Настоящий критерий «family-first»: мини-клуб + уход за детьми + занятия по возрасту, а не просто «семейный номер». 7 активных измерений дают 94; тональность отзывов (6) — в планах.</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== MERCATO ===================== -->
+<section id="market">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <p class="eyebrow"><span data-l="it">Mercato</span><span data-l="en">Market</span><span data-l="ru">Рынок</span></p>
+      <h2><span data-l="it">Dove si inserisce nella filiera</span><span data-l="en">Where it fits in the value chain</span><span data-l="ru">Где он в цепочке создания ценности</span></h2>
+      <p><span data-l="it">Uno strumento <b>lato offerta</b> per l'hospitality / travel-tech: non vende ai viaggiatori, costruisce e qualifica il catalogo a monte.</span><span data-l="en">A <b>supply-side</b> tool for hospitality / travel-tech: it doesn't sell to travellers, it builds and qualifies the upstream catalogue.</span><span data-l="ru">Инструмент <b>со стороны предложения</b> для hospitality / travel-tech: не продаёт путешественникам, а строит и квалифицирует каталог.</span></p>
+    </div>
+    <div class="market">
+      <div class="mcard rv"><h3><span data-l="it">Chi lo usa</span><span data-l="en">Who uses it</span><span data-l="ru">Кто использует</span></h3><p><span data-l="it">L'operatore di una piattaforma di scoperta hotel per famiglie, che deve costruire l'offerta e avviare le partnership con gli hotel.</span><span data-l="en">The operator of a family-hotel discovery platform, who needs to build supply and start partnerships with hotels.</span><span data-l="ru">Оператор платформы по поиску семейных отелей, которому нужно наполнить предложение и запустить партнёрства.</span></p></div>
+      <div class="mcard rv"><h3><span data-l="it">Quale problema risolve</span><span data-l="en">The problem it solves</span><span data-l="ru">Какую проблему решает</span></h3><p><span data-l="it">La ricerca e la qualificazione manuale degli hotel per famiglie non scala. Radar la automatizza mantenendo ogni dato verificabile alla fonte.</span><span data-l="en">Manual research and vetting of family hotels does not scale. Radar automates it while keeping every data point traceable to its source.</span><span data-l="ru">Ручной поиск и проверка семейных отелей не масштабируются. Radar автоматизирует это, сохраняя проверяемость каждого факта.</span></p></div>
+      <div class="mcard rv"><h3><span data-l="it">Posizione nella filiera</span><span data-l="en">Position in the chain</span><span data-l="ru">Место в цепочке</span></h3><p><span data-l="it">A monte degli OTA e dei metasearch: scoperta, arricchimento e vetting dell'offerta, più l'acquisizione dei partner. Distribuzione e affiliazioni sono evoluzioni previste.</span><span data-l="en">Upstream of OTAs and metasearch: discovery, enrichment and vetting of supply, plus partner acquisition. Distribution and affiliations are planned evolutions.</span><span data-l="ru">Выше OTA и метапоиска: поиск, обогащение и проверка предложения плюс привлечение партнёров. Дистрибуция и партнёрки — в планах.</span></p></div>
+      <div class="mcard rv"><h3><span data-l="it">Costo dei dati</span><span data-l="en">Data cost</span><span data-l="ru">Стоимость данных</span></h3><p><span data-l="it">La scoperta e la valutazione girano su fonti gratuite (OpenStreetMap + sito ufficiale dell'hotel), senza chiavi API obbligatorie: il costo marginale per hotel valutato tende a zero.</span><span data-l="en">Discovery and scoring run on free sources (OpenStreetMap + the hotel's official site), with no mandatory API keys: the marginal cost per scored hotel tends to zero.</span><span data-l="ru">Поиск и оценка работают на бесплатных источниках (OpenStreetMap + сайт отеля), без обязательных ключей API: предельная стоимость на отель стремится к нулю.</span></p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== ROADMAP ===================== -->
+<section id="roadmap">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <p class="eyebrow"><span data-l="it">Evoluzioni · roadmap</span><span data-l="en">Evolutions · roadmap</span><span data-l="ru">Развитие · планы</span></p>
+      <h2><span data-l="it">Cosa è previsto (non ancora presente)</span><span data-l="en">What's planned (not yet present)</span><span data-l="ru">Что запланировано (ещё нет)</span></h2>
+      <p><span data-l="it">Solo evoluzioni documentate nella roadmap del prodotto. Finché non sono collegate, non vengono presentate come attive.</span><span data-l="en">Only evolutions documented in the product roadmap. Until connected, they are not presented as live.</span><span data-l="ru">Только то, что задокументировано в дорожной карте. Пока не подключено — не подаётся как действующее.</span></p>
+    </div>
+    <div class="rlist rv">
+      <div class="ritem"><span class="tag road">Roadmap</span><h3><span data-l="it">Connettori piattaforme &amp; affiliazioni</span><span data-l="en">Platform connectors &amp; affiliations</span><span data-l="ru">Коннекторы платформ и партнёрки</span></h3><p><span data-l="it">Travelpayouts/Awin → Booking, poi Expedia EPS, Google Hotel Ads, TripAdvisor. Deep link e tracciamento dove l'API lo consente. Tassi mai inseriti a mano: «non disponibile» finché non collegati.</span><span data-l="en">Travelpayouts/Awin → Booking, then Expedia EPS, Google Hotel Ads, TripAdvisor. Deep links and tracking where the API allows. Rates never hard-coded: «not available» until connected.</span><span data-l="ru">Travelpayouts/Awin → Booking, затем Expedia EPS, Google Hotel Ads, TripAdvisor. Глубокие ссылки и трекинг, где позволяет API. Ставки не вшиваются: «недоступно», пока не подключено.</span></p></div>
+      <div class="ritem"><span class="tag road">Roadmap</span><h3><span data-l="it">Sentiment delle recensioni nel punteggio</span><span data-l="en">Review sentiment in the score</span><span data-l="ru">Тональность отзывов в оценке</span></h3><p><span data-l="it">L'ottavo segnale (peso 6) che conferma il family-fit con il sentiment dei genitori. Oggi riservato: il punteggio si forma sui 7 segnali attivi.</span><span data-l="en">The eighth signal (weight 6) confirming family-fit with parent sentiment. Reserved today: the score is built on the 7 active signals.</span><span data-l="ru">Восьмой сигнал (вес 6), подтверждающий family-fit тональностью родителей. Сейчас зарезервирован: оценка строится на 7 активных сигналах.</span></p></div>
+      <div class="ritem"><span class="tag road">Roadmap</span><h3><span data-l="it">Report on-demand</span><span data-l="en">On-demand reports</span><span data-l="ru">Отчёты по запросу</span></h3><p><span data-l="it">Excel della pipeline, PPT per i soci, CSV per il commercialista — bilingui, senza numeri non verificati, generati tramite il piano Claude dell'utente (Cowork).</span><span data-l="en">Pipeline Excel, partner PPT, accountant CSV — bilingual, no unverified numbers, generated via the user's Claude plan (Cowork).</span><span data-l="ru">Excel воронки, PPT для партнёров, CSV для бухгалтера — двуязычные, без непроверенных чисел, через тариф Claude пользователя (Cowork).</span></p></div>
+      <div class="ritem"><span class="tag road">Roadmap</span><h3><span data-l="it">Aggiornamento in-app</span><span data-l="en">In-app updater</span><span data-l="ru">Обновление в приложении</span></h3><p><span data-l="it">Aggiornamento con un clic (bundle firmato + manifest). Oggi ogni release si installa e sostituisce la precedente tramite lo script di rilascio.</span><span data-l="en">One-click update (signed bundle + manifest). Today each release installs and replaces the previous via the release script.</span><span data-l="ru">Обновление в один клик (подписанный бандл + манифест). Сейчас каждый релиз ставится и заменяет предыдущий скриптом релиза.</span></p></div>
+    </div>
+
+    <h3 style="font-size:var(--step-1); margin:clamp(34px,5vw,52px) 0 6px"><span data-l="it">Vincoli onesti — sempre dichiarati</span><span data-l="en">Honest constraints — always stated</span><span data-l="ru">Честные ограничения — всегда указаны</span></h3>
+    <div class="constraints rv">
+      <div class="ci"><span class="dot"></span><span><b><span data-l="it">Tutto il mondo = a coda.</span><span data-l="en">Whole world = queued.</span><span data-l="ru">Весь мир = по очереди.</span></b> <span data-l="it">Milioni di hotel richiedono tempo: si punta dove il valore atteso è più alto.</span><span data-l="en">Millions of hotels take time: effort goes where expected value is highest.</span><span data-l="ru">Миллионы отелей требуют времени: усилия туда, где ожидаемая ценность выше.</span></span></div>
+      <div class="ci"><span class="dot"></span><span><b><span data-l="it">API e affiliazioni: con chiave.</span><span data-l="en">APIs &amp; affiliations: keyed.</span><span data-l="ru">API и партнёрки: по ключу.</span></b> <span data-l="it">Richiedono approvazione e credenziali; finché non collegate → «non disponibile», mai stimato.</span><span data-l="en">They need approval and credentials; until connected → «not available», never estimated.</span><span data-l="ru">Нужны одобрение и доступы; пока не подключено → «недоступно», не оценивается.</span></span></div>
+      <div class="ci"><span class="dot"></span><span><b><span data-l="it">Outreach mai automatico.</span><span data-l="en">Outreach never automatic.</span><span data-l="ru">Рассылка не автоматическая.</span></b> <span data-l="it">L'approvazione umana è per design; solo contatti pubblici, con opt-out e log.</span><span data-l="en">Human approval is by design; public contacts only, with opt-out and logs.</span><span data-l="ru">Человеческое одобрение заложено в дизайн; только публичные контакты, с отказом и логами.</span></span></div>
+      <div class="ci"><span class="dot"></span><span><b><span data-l="it">.exe via CI.</span><span data-l="en">.exe via CI.</span><span data-l="ru">.exe через CI.</span></b> <span data-l="it">L'eseguibile Windows non si compila da macOS: lo costruisce la pipeline di integrazione continua.</span><span data-l="en">The Windows executable can't compile on macOS: the continuous-integration pipeline builds it.</span><span data-l="ru">Windows-исполняемый файл не собирается на macOS: его собирает конвейер непрерывной интеграции.</span></span></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p class="pr"><span data-l="it"><b>Principio non negoziabile:</b> ogni dato family mostra la sua fonte (citazione dal sito); il «valore atteso» è una stima per dare priorità, non un dato verificato.</span><span data-l="en"><b>Non-negotiable principle:</b> every family data point shows its source (quote from the site); «expected value» is an estimate for prioritizing, not verified data.</span><span data-l="ru"><b>Незыблемый принцип:</b> каждый семейный факт показывает источник (цитата с сайта); «ожидаемая ценность» — оценка для приоритизации, а не проверенный факт.</span></p>
+    <p style="white-space:nowrap">© Giovanni Bucolo · Kidotel Radar</p>
+  </div>
+</footer>
+
+</div><!-- /.page -->
+
+<script>
+/* Progressive enhancement (la pagina funziona già senza JS):
+   1) persiste la lingua scelta; 2) aggiorna <html lang>; 3) reveal allo scroll. */
+(function(){
+  var radios = {it:document.getElementById('L-it'), en:document.getElementById('L-en'), ru:document.getElementById('L-ru')};
+  function apply(l){ if(!radios[l]) l='ru'; radios[l].checked=true; document.documentElement.lang=l; }
+  try{ var saved=localStorage.getItem('kidotel.presLang'); if(saved) apply(saved); }catch(e){}
+  Object.keys(radios).forEach(function(l){
+    radios[l].addEventListener('change', function(){ if(radios[l].checked){ document.documentElement.lang=l; try{localStorage.setItem('kidotel.presLang', l);}catch(e){} } });
+  });
+  // reveal allo scroll (rispetta prefers-reduced-motion)
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var els = [].slice.call(document.querySelectorAll('.rv'));
+  if(reduce || !('IntersectionObserver' in window)){ els.forEach(function(e){e.classList.add('in');}); return; }
+  var io = new IntersectionObserver(function(es){ es.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target);} }); }, {rootMargin:'0px 0px -8% 0px', threshold:0.08});
+  els.forEach(function(e){ io.observe(e); });
+})();
+</script>
+</body>
+</html>
