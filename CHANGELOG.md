@@ -2,6 +2,19 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.31] — 2026-06-25
+### Corretto — i link agli hotel ora FUNZIONANO (Google falliva per il muro cookie UE)
+- **Causa del «Google Hotels non funziona»** (verificata live, utente in Italia): `google.com/travel/*` e `google.com/maps/*` rispondono **302 → `consent.google.com?gl=IT`** («Prima di continuare») PRIMA di mostrare l'hotel; e seguendo il flusso si finisce su `…/travel/unsupported`. Inoltre la scheda esatta di un hotel su Google richiede un **entity-id opaco** non derivabile dai nostri dati. → **Google rimosso del tutto** (Hotels e Maps).
+- **Nuovo set «Apri l'hotel»** — solo destinazioni **verificate dal vivo, consent-free, che atterrano sull'hotel** con i soli dati che abbiamo (nome, città, paese, lat/lon, sito):
+  - **Sito** — il sito ufficiale dell'hotel (atterra ESATTAMENTE sull'hotel; mostrato solo se presente; `https://` aggiunto se manca).
+  - **Cerca** — DuckDuckGo: niente muro cookie, mette il **sito ufficiale al 1° posto**.
+  - **Booking** — `?ss=`: l'hotel come **primo risultato** + prezzi (banner cookie dismissibile, no muro).
+  - **Mappa** — OpenStreetMap su **coordinate** (pin esatto, zero consenso; coord. piena precisione a 7 decimali).
+- **Expedia/Hotels.com** restano fuori: ri-confermato che la loro scheda richiede l'**hotel-id interno** (`h…`/`ho…`), non ottenibile da nome/città/coordinate → arriverà con l'affiliazione (roadmap). Niente pulsanti rotti, niente dati inventati.
+- Metodo: ricerca multi-agente con **verifica avversariale** (8 schemi testati con WebFetch/WebSearch contro hotel reali). `OtaLinks` riscritto, i18n `ota.open`/`link.site`/`link.search`/`link.map` it/en/ru (rimosso `ota.find`), NEWS Guida aggiornata.
+### Verificato
+- `tsc` pulito; parità i18n **279 × 3**; **curl live**: Sito→sito hotel `200`, DuckDuckGo `200`, Booking `202`, OSM `200` (nessuno tocca `consent.google.com`); vecchio Google → `/travel/unsupported`. Anteprima: app monta senza errori, logica link produce i 4 href corretti (`www.` → `https://www.`).
+
 ## [0.8.30] — 2026-06-25
 ### Rimosso — pulsanti «Cerca su» Expedia e Hotels.com (non raggiungibili senza la loro API)
 - **Verità tecnica**: non esiste un link che porti per **nome** alla scheda di uno specifico hotel su Expedia/Hotels.com. Il loro `destination=` indirizza solo per **località** (mostrava la zona, non l'hotel); e il ripiego con la ricerca Google (v0.8.29) apriva Google — non Expedia — e spesso **non mostrava nemmeno l'hotel**. Per la scheda esatta serve l'**hotel-ID interno**, ottenibile solo con l'**affiliazione Expedia (EPS)** → roadmap.

@@ -388,31 +388,33 @@ async function openExternal(url: string) {
 }
 const extLink = (url: string) => (e: { preventDefault: () => void }) => { e.preventDefault(); void openExternal(url); };
 
-// Link «cerca su» le OTA: ricerca PRE-COMPILATA (nome + città + paese) sulla piattaforma — NON la
-// pagina esatta dell'hotel (quella richiede l'ID interno via API/affiliazione → roadmap). È una
-// ricerca: l'utente sceglie il risultato. Nessun ID inventato. Google Hotels aggrega i prezzi OTA.
-// Teniamo SOLO le piattaforme dove la ricerca per nome ARRIVA all'hotel specifico:
-// - Google Hotels: trova la scheda dell'hotel e mostra i prezzi di Booking/Expedia/Hotels.com con il
-//   link diretto alla prenotazione di QUELL'hotel (è così che si raggiunge l'offerta Expedia oggi).
-// - Booking / TripAdvisor: la loro ricerca matcha il nome dell'hotel → atterra sull'hotel.
-// Expedia/Hotels.com NON hanno un link per-nome alla scheda (il loro `destination=` è solo una località
-// e serve il loro hotel-ID via API/affiliazione → roadmap): un pulsante diretto sarebbe rotto, quindi
-// non lo mettiamo; l'utente raggiunge il prezzo Expedia/Hotels.com da Google Hotels.
-const OTA_SITES: { name: string; url: (q: string) => string }[] = [
-  { name: "Google Hotels", url: (q) => `https://www.google.com/travel/search?q=${q}` },
-  { name: "Booking", url: (q) => `https://www.booking.com/searchresults.html?ss=${q}` },
-  { name: "TripAdvisor", url: (q) => `https://www.tripadvisor.com/Search?q=${q}` },
-];
-const otaQuery = (h: { name: string; city?: string | null; country?: string | null }) =>
+// Link per RAGGIUNGERE l'hotel, scelti dopo verifica live: SOLO destinazioni consent-free che atterrano
+// sull'hotel con i SOLI dati che abbiamo (nome, città, paese, lat/lon, sito). Scartati e perché:
+// - Google Hotels / Google Maps: da IT/UE google.com fa 302 → consent.google.com («Prima di continuare»)
+//   PRIMA di mostrare l'hotel (causa reale del «non funziona»); e la scheda esatta richiede un entity-id
+//   opaco non derivabile dai nostri dati.
+// - Expedia / Hotels.com: la scheda richiede il loro hotel-id interno (h…/ho…) → niente link per nome.
+// - TripAdvisor / Trivago: pagina-risultati intermedia o 403; il deep-link richiede un location-id.
+// Tenuti (verificati consent-free): Sito ufficiale (atterra ESATTAMENTE sull'hotel) · DuckDuckGo (niente
+// muro cookie, mette il sito ufficiale #1) · Booking (`?ss=`, hotel come primo risultato + prezzi) ·
+// OpenStreetMap su coordinate (pin esatto, niente consenso). Nessun ID inventato.
+const hotelQuery = (h: { name: string; city?: string | null; country?: string | null }) =>
   encodeURIComponent([h.name, h.city, h.country].filter(Boolean).join(" "));
+const httpUrl = (u: string) => (/^[a-z]+:\/\//i.test(u) ? u : `https://${u}`);
 
 function OtaLinks({ h, t }: { h: Hotel; t: (k: TKey) => string }) {
-  const q = otaQuery(h);
+  const q = hotelQuery(h);
+  const hasCoord = Number.isFinite(h.lat) && Number.isFinite(h.lon) && (h.lat !== 0 || h.lon !== 0);
+  const links: { name: string; url: string; title: string }[] = [];
+  if (h.website) links.push({ name: t("link.site"), url: httpUrl(h.website), title: prettyHost(h.website) });
+  links.push({ name: t("link.search"), url: `https://duckduckgo.com/?q=${q}`, title: decodeURIComponent(q) });
+  links.push({ name: "Booking", url: `https://www.booking.com/searchresults.html?ss=${q}`, title: decodeURIComponent(q) });
+  if (hasCoord) links.push({ name: t("link.map"), url: `https://www.openstreetmap.org/?mlat=${h.lat}&mlon=${h.lon}#map=18/${h.lat}/${h.lon}`, title: `${h.lat}, ${h.lon}` });
   return (
     <div className="ota-row no-print">
-      <span className="ota-lab">{t("ota.find")}:</span>
-      {OTA_SITES.map((o) => (
-        <a key={o.name} className="ota-chip" href={o.url(q)} target="_blank" rel="noreferrer" onClick={extLink(o.url(q))} title={`${o.name} — ${decodeURIComponent(q)}`}>{o.name}</a>
+      <span className="ota-lab">{t("ota.open")}:</span>
+      {links.map((o) => (
+        <a key={o.name} className="ota-chip" href={o.url} target="_blank" rel="noreferrer" onClick={extLink(o.url)} title={`${o.name} — ${o.title}`}>{o.name}</a>
       ))}
     </div>
   );

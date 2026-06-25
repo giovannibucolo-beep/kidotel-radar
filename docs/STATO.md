@@ -2,8 +2,14 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.30` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.31` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-25
+
+## Fatto v0.8.31 (2026-06-25) — link hotel che FUNZIONANO (Google falliva per muro cookie UE)
+- «Google Hotels non funziona» = da IT google.com/* fa 302→consent.google.com (gl=IT) prima dell'hotel, e seguendo il flusso si arriva a `/travel/unsupported`; la scheda esatta richiede un entity-id opaco non derivabile. → Google tolto del tutto (Hotels+Maps).
+- Nuovo set «Apri l'hotel», verificato live (workflow 8 schemi, verifica avversariale), tutto consent-free e che atterra sull'hotel coi soli dati nostri: **Sito** (sito ufficiale, esatto; solo se presente), **Cerca** (DuckDuckGo, sito ufficiale #1), **Booking** (`?ss=`, hotel 1° risultato + prezzi), **Mappa** (OpenStreetMap su coordinate, pin esatto; coord. piena precisione 7 decimali).
+- Expedia/Hotels.com: ri-confermato impossibile senza il loro hotel-id interno → roadmap affiliazione.
+- Verificato: tsc pulito, parità 279×3 (rimosso ota.find, aggiunti ota.open/link.site/search/map), curl live (Sito/DDG/OSM 200, Booking 202, nessuno tocca consent.google.com; vecchio Google→/travel/unsupported), anteprima monta senza errori coi 4 href corretti.
 
 ## Fatto v0.8.30 (2026-06-25) — tolti Expedia/Hotels.com (impossibili senza la loro API) + presentazione RU
 - Niente link per-nome alla scheda di un hotel su Expedia/Hotels.com: `destination=` è solo località e il ripiego Google apriva Google (non Expedia) senza mostrare l'hotel. Serve l'hotel-ID via affiliazione EPS (roadmap). Regola «niente funzioni rotte» → rimossi i 2 pulsanti. Restano i 3 che arrivano all'hotel: Google Hotels (mostra anche il prezzo Expedia/Hotels.com con link diretto), Booking, TripAdvisor. NEWS Guida aggiornata it/en/ru.
