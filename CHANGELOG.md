@@ -2,6 +2,13 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.26] — 2026-06-25
+### Corretto — numeri coerenti + la scansione non si blocca più sull'Austria
+- **Avanzamento valutazione incoerente (>100%)**: mostrava «valutati / con-sito» (es. 79.443 / 79.416, numeratore > denominatore!). Causa: l'upsert al ri-scan faceva `website = excluded.website`, **azzerando il sito** di un hotel già valutato quando OSM non lo riportava più → restavano hotel con voto ma senza sito (scored > with_site). **Doppia correzione**: (a) l'upsert ora **preserva** l'ultimo sito/telefono conosciuto (`COALESCE(NULLIF(excluded.website,''), hotels.website)`), così non si perde più il sito; (b) l'avanzamento ora è **valutati / (valutati + in-coda)** — denominatore = già valutati + ancora da valutare (sito presente, voto mancante): non supera mai il 100%. Nuovo campo `to_score` in `score_stats`.
+- **«Completa tutti» si bloccava sempre sull'Austria**: se un paese falliva (Nominatim/Overpass momentaneamente giù) l'eccezione **fermava l'intero giro del mondo** col cursore bloccato PRIMA di quel paese → ad ogni riavvio si ritentava sempre lo stesso. Ora un paese che fallisce viene **saltato** e la scansione **prosegue avanzando il cursore** (il paese si ritenta al giro successivo); `list_subareas` degrada con 0 regioni invece di lanciare. Stessa resilienza per «Completa continente». Così la copertura **progredisce davvero** verso tutti i paesi.
+### Verificato
+- `tsc` + `cargo test` 13/13 puliti; anteprima (mock): avanzamento «79.443 / 79.443 — 100%» (coda 0) e «79.443 / 100.000 — 79%» (coda 20.557), mai più numeratore > denominatore; 0 errori console.
+
 ## [0.8.25] — 2026-06-25
 ### Aggiunto — metodo del punteggio nella Guida + ticker «breaking news» delle scansioni
 - **Metodologia del family-fit nella Guida** (nuova sezione trilingue): spiega QUALI fattori valutiamo, con QUALE peso e PERCHÉ, e quindi perché si arriva a un certo voto. Pesi reali (somma 100, presi da `signals.json`): Miniclub/animazione 22 · Strutture bimbi 18 · Camere family 14 · Childcare 12 · Menù bimbi 10 · Attività per età 10 · Sicurezza 8 (+ Recensioni 6, riservato). Ribadito: ogni servizio conta solo con la frase del sito verificata parola per parola (in «Prova»); niente sito = 0; nessun dato inventato.

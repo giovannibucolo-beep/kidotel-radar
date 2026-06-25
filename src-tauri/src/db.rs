@@ -273,8 +273,12 @@ pub fn upsert_hotels(conn: &Connection, hotels: &[Hotel]) -> Result<(), String> 
             -- e sovrascriverlo al ri-scan rompeva il raggruppamento per paese.
             city = COALESCE(hotels.city, excluded.city),
             country = COALESCE(hotels.country, excluded.country),
-            website = excluded.website,
-            phone = excluded.phone,
+            -- website/phone: aggiorna se OSM ne ha uno NUOVO, ma NON azzerare quello già noto se OSM
+            -- ora lo lascia vuoto. Prima `website = excluded.website` cancellava il sito a un hotel già
+            -- VALUTATO → restavano hotel con punteggio ma senza sito (scored > with_site → avanzamento
+            -- valutazione >100%, numeri incoerenti). Ora si preserva l'ultimo sito/telefono conosciuto.
+            website = COALESCE(NULLIF(excluded.website, ''), hotels.website),
+            phone = COALESCE(NULLIF(excluded.phone, ''), hotels.phone),
             email = COALESCE(excluded.email, hotels.email),
             lat = excluded.lat,
             lon = excluded.lon,
@@ -614,6 +618,7 @@ pub struct ScoreStats {
     pub with_site: i64,
     pub scored: i64,
     pub strong: i64,
+    pub to_score: i64, // hotel con sito ma ancora senza voto (coda di valutazione)
 }
 
 // Statistiche su TUTTO il database (per la barra di avanzamento globale). `threshold` = soglia
@@ -624,7 +629,8 @@ pub fn score_stats(app: AppHandle, threshold: Option<i64>) -> Result<ScoreStats,
     let thr = threshold.unwrap_or(60);
     conn.query_row(
         "SELECT COUNT(*), SUM(website IS NOT NULL AND website<>''),
-                SUM(family_fit_score IS NOT NULL), SUM(family_fit_score>=?1) FROM hotels",
+                SUM(family_fit_score IS NOT NULL), SUM(family_fit_score>=?1),
+                SUM(family_fit_score IS NULL AND website IS NOT NULL AND website<>'') FROM hotels",
         [thr],
         |r| {
             Ok(ScoreStats {
@@ -632,6 +638,8 @@ pub fn score_stats(app: AppHandle, threshold: Option<i64>) -> Result<ScoreStats,
                 with_site: r.get::<_, Option<i64>>(1)?.unwrap_or(0),
                 scored: r.get::<_, Option<i64>>(2)?.unwrap_or(0),
                 strong: r.get::<_, Option<i64>>(3)?.unwrap_or(0),
+                // hotel ANCORA da valutare (sito presente, voto mancante): la coda della valutazione.
+                to_score: r.get::<_, Option<i64>>(4)?.unwrap_or(0),
             })
         },
     )

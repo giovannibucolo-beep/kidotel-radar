@@ -2,8 +2,13 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.25` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.26` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-25
+
+## Fatto v0.8.26 (2026-06-25) — numeri coerenti + scansione non più bloccata sull'Austria
+- **Avanzamento valutazione >100%** (79.443/79.416): causa = upsert `website = excluded.website` azzerava il sito di hotel già valutati (scored > with_site). Fix: upsert `COALESCE(NULLIF(excluded.website,''), hotels.website)` (+phone) preserva il sito; avanzamento = scored/(scored+to_score) con nuovo campo `to_score` in score_stats. Mai più >100%.
+- **«Completa tutti» bloccato sull'Austria**: un paese che falliva (Nominatim/Overpass) lanciava e fermava l'intero giro col cursore PRIMA del paese → riavvio ritentava sempre lo stesso. Fix: try/catch per paese → salta e AVANZA il cursore (ritenta al giro dopo); `list_subareas` → 0 regioni invece di throw; stessa resilienza in completeContinent. La copertura ora progredisce.
+- Verificato (anteprima mock): avanzamento 79.443/79.443=100% e 79.443/100.000=79%, coerente; tsc+cargo 13/13; 0 errori.
 
 ## Fatto v0.8.25 (2026-06-25) — metodo punteggio in Guida + ticker «breaking news» scansioni
 - Guida: nuova sezione trilingue «Come si calcola il punteggio (metodo)» — fattori, pesi reali (da signals.json: 22/18/14/12/10/10/8 +6 riservato = 100) e perché; verbatim obbligatorio, no sito = 0, niente inventato.

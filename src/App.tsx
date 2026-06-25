@@ -142,7 +142,7 @@ type EnrichResult = {
 type EnrichOne = EnrichResult & { id: string };
 type EnrichBatch = { processed: number; remaining: number; results: EnrichOne[] };
 
-type ScoreStats = { total: number; with_site: number; scored: number; strong: number };
+type ScoreStats = { total: number; with_site: number; scored: number; strong: number; to_score: number };
 
 // #9 — dati e opzioni dell'infografica stampabile.
 type InfoData = {
@@ -595,7 +595,9 @@ export default function App() {
     setCovNote(`${prefix}${country}: ${t("cov.enumerating")}…`);
     // Nominatim: usa l'alias di query quando il nome pycountry non si geocodifica bene; il paese
     // TIMBRATO sugli hotel resta però il nome canonico (così la copertura raggruppa con il resto).
-    const regions = await invoke<SubArea[]>("list_subareas", { query: nominatimQuery(country) });
+    // Se Nominatim è momentaneamente giù NON lanciamo (bloccava l'intero giro del mondo): 0 regioni →
+    // il paese si salta e si riprende al giro successivo.
+    const regions = await invoke<SubArea[]>("list_subareas", { query: nominatimQuery(country) }).catch(() => [] as SubArea[]);
     if (!regions.length) { setCovNote(`${prefix}${country}: ${t("cov.noregions")}`); return 0; }
     // INCREMENTALE: salta le regioni già scansionate negli ultimi 30 giorni (niente da capo ogni volta).
     const keys = regions.map((r) => `${r.osm_type}/${r.osm_id}`);
@@ -649,7 +651,9 @@ export default function App() {
       let total = 0;
       for (let i = 0; i < list.length; i++) {
         if (covStopRef.current) break;
-        total += await runCompleteCountry(list[i], `${t(("cont." + contKey) as TKey)} ${i + 1}/${list.length} · `);
+        // un paese che fallisce non ferma il resto del continente: lo saltiamo e proseguiamo.
+        try { total += await runCompleteCountry(list[i], `${t(("cont." + contKey) as TKey)} ${i + 1}/${list.length} · `); }
+        catch (e) { console.warn("Completa continente: paese saltato", list[i], e); }
       }
       setNotice(`${t(("cont." + contKey) as TKey)}: +${total.toLocaleString(lang)} ${t("cov.new")}${covStopRef.current ? ` (${t("cov.stopped")})` : ""}.`);
     } catch (e) {
@@ -675,8 +679,19 @@ export default function App() {
         if (covStopRef.current) break;
         const country = ALL_COUNTRIES[i];
         const k = CONTINENT[country] || "other";
-        total += await runCompleteCountry(country, `${t(("cont." + k) as TKey)} · ${i + 1}/${ALL_COUNTRIES.length} · `);
-        saveScanCursor(country); // avanza il cursore SOLO dopo aver completato il paese
+        try {
+          total += await runCompleteCountry(country, `${t(("cont." + k) as TKey)} · ${i + 1}/${ALL_COUNTRIES.length} · `);
+        } catch (e) {
+          // Un paese che fallisce (es. Nominatim/Overpass momentaneamente giù) NON deve FERMARE il giro
+          // del mondo: prima un'eccezione qui interrompeva tutto col cursore bloccato PRIMA del paese →
+          // ad ogni riavvio si ritentava sempre lo stesso (es. «ricomincia da Austria»). Ora lo saltiamo
+          // e proseguiamo, avanzando comunque il cursore: la scansione PROGREDISCE e il paese verrà
+          // ritentato al prossimo giro.
+          console.warn("Completa tutti: paese saltato", country, e);
+        }
+        // Avanza il cursore se il paese è stato attraversato (completato o saltato per errore); NON se
+        // l'ha fermato l'utente (in quel caso si riprende da questo stesso paese, regioni fatte saltate).
+        if (!covStopRef.current) saveScanCursor(country);
       }
       // se siamo arrivati in fondo senza fermarci → giro del mondo finito: la prossima volta riparte da capo.
       if (!covStopRef.current && i >= ALL_COUNTRIES.length) saveScanCursor("");
@@ -801,7 +816,7 @@ kidotel.co`;
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     const mock: InfoData = {
-      stats: { total: 132480, with_site: 61230, scored: 48910, strong: 12740 },
+      stats: { total: 132480, with_site: 61230, scored: 48910, strong: 12740, to_score: 12320 },
       hist: [820, 1840, 4120, 7350, 9980, 11240, 7860, 3920, 1480, 400],
       topCountries: [
         { country: "Italy", family: 2140, total: 21336 }, { country: "Germany", family: 1980, total: 18420 },
@@ -1521,20 +1536,27 @@ kidotel.co`;
             </div>
           </div>
 
-          {scoreStats && scoreStats.with_site > 0 && (
-            <div className="progress">
-              <div className="progress-head">
-                <span>
-                  {t("progress.label")}: {scoreStats.scored.toLocaleString(lang)} / {scoreStats.with_site.toLocaleString(lang)}
-                  {enriching && <span className="progress-live"> · {t("progress.running")}</span>}
-                </span>
-                <span>{Math.round((scoreStats.scored / scoreStats.with_site) * 100)}%</span>
+          {scoreStats && (scoreStats.scored + scoreStats.to_score) > 0 && (() => {
+            // Universo della valutazione = già valutati + ancora in coda (sito presente, voto mancante).
+            // NB: il denominatore NON è «hotel con sito», perché un hotel può aver perso il sito DOPO
+            // essere stato valutato → altrimenti valutati > con-sito e l'avanzamento superava il 100%.
+            const denom = scoreStats.scored + scoreStats.to_score;
+            const pct = Math.min(100, Math.round((scoreStats.scored / denom) * 100));
+            return (
+              <div className="progress">
+                <div className="progress-head">
+                  <span>
+                    {t("progress.label")}: {scoreStats.scored.toLocaleString(lang)} / {denom.toLocaleString(lang)}
+                    {enriching && <span className="progress-live"> · {t("progress.running")}</span>}
+                  </span>
+                  <span>{pct}%</span>
+                </div>
+                <div className="bar">
+                  <div className="bar-fill" style={{ width: `${pct}%` }} />
+                </div>
               </div>
-              <div className="bar">
-                <div className="bar-fill" style={{ width: `${Math.min(100, Math.round((scoreStats.scored / scoreStats.with_site) * 100))}%` }} />
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {area && <div className="area-caption">{area}</div>}
           {/* Ticker «breaking news»: le scansioni in corso (copertura · stelle · valutazione) scorrono
