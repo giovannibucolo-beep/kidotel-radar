@@ -270,6 +270,9 @@ body { margin: 0; background: var(--bg); }
 .ota-chip { font-size: 12px; font-weight: 600; color: var(--brand-strong); text-decoration: none; padding: 5px 11px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); min-height: 28px; display: inline-flex; align-items: center; }
 .ota-chip:hover { border-color: var(--brand); background: var(--brand-soft); }
 .crm-contacts .ota-row { margin-top: 4px; padding: 7px 10px; }
+.cert-row { margin: 6px 0; }
+.cert-btn { font-size: 12px; font-weight: 700; color: var(--on-brand); background: var(--brand); border: 1px solid var(--brand); border-radius: 999px; padding: 6px 13px; min-height: 28px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.cert-btn:hover { background: var(--accent); border-color: var(--accent); }
 .proof-absent { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .absent-chip { font-size: 11px; color: var(--text-3); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; }
 

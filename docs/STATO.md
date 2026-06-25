@@ -2,8 +2,14 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.33` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.34` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-25
+
+## Fatto v0.8.34 (2026-06-25) — Kidotel Certified (certificato + badge per-hotel)
+- Riga hotel valutato → «Certificato Kidotel»: certificato brandizzato (Produced Work) con punteggio + servizi famiglia e PROVA citata dal sito (con fonte) + attribuzione OSM, da inviare/stampare; e badge HTML copiato negli appunti (link `{base}/hotel/{osm_type}/{osm_id}` → backlink kidotel.co). Implementa la via economica «Kidotel Certified». `buildCertificateHtml`/`badgeSnippet`/`openCertificate`.
+- Verificato: tsc pulito, parità 308×3, anteprima (certificato on-brand, screenshot; struttura: nome/punteggio/sigillo/3 prove+fonte/attribuzione OSM/metodo/wordmark; no contatti; badge URL ok), 0 errori console.
+- **Nota tecnica per kidotel.com** pronta (trilingue): `presentazione/kidotel-nota-tecnica-kidotelcom.html` (import Feed + endpoint /claim).
+- **Prossimo (piano economico)**: metodologia/scoring come API, analytics premium per hotel, outreach 1:1 mirato. Lato kidotel.com: import feed + /claim (vedi nota tecnica).
 
 ## Fatto v0.8.33 (2026-06-25) — Report di mercato vendibile (uso economico dato, «da fare ora» #2)
 - Nuovo **Report insight** (menu Dati): HTML stampabile con SOLO aggregati (analizzati, family, distribuzione, top destinazioni, continenti) → opera derivata/Produced Work (ODbL §4.5b, no share-alike; statistiche anonime = fuori GDPR), con attribuzione OSM + «non un database». Niente schede-hotel, niente dati interni (funnel/valore). Riusa score_stats/score_histogram/coverage_by_country. Implementa la «da fare ora» #2 del piano economico; la #1 (SEO/classifiche) è coperta dal Feed sito (v0.8.32).

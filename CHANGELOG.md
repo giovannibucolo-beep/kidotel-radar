@@ -2,6 +2,15 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.34] — 2026-06-25
+### Aggiunto — «Kidotel Certified»: certificato + badge per-hotel (via economica diretta)
+- Nella riga di un hotel **valutato** (espandi) compare **«Certificato Kidotel»** → genera un **certificato brandizzato** (apre nel browser di sistema, stampa/PDF): wordmark + sigillo «KIDOTEL CERTIFIED», nome/località, **punteggio family-fit grande**, i **servizi famiglia verificati con la citazione dal sito ufficiale** (prova breve attribuita + link alla fonte), data di rilascio, metodo Kidotel e attribuzione **«© OpenStreetMap contributors (ODbL)»**. È un'opera derivata (Produced Work): nessun contatto privato, prova citata (non paragrafi interi). Pensato da inviare all'hotel partner.
+- Contestualmente viene **copiato negli appunti uno snippet badge** (HTML inline, nessuna dipendenza) che l'hotel incolla sul proprio sito: «**Kidotel Certified** · Family-Fit NN/100» con link a `{base}/hotel/{osm_type}/{osm_id}` → **backlink/traffico** verso kidotel.co.
+- Implementa la via «Kidotel Certified» del piano di uso economico (l'hotel paga audit/certificazione). `buildCertificateHtml`/`badgeSnippet`/`openCertificate`; base link da Impostazioni→Integrazione kidotel.co; mock dev `__certHtml`.
+- i18n `cert.*` (it/en/ru, parità **308×3**); CSS `.cert-btn`. NEWS Guida trilingue.
+### Verificato
+- `tsc` pulito; parità **308×3**; anteprima: certificato renderizzato (screenshot) on-brand con wordmark, sigillo, 91/100, 3 prove con citazione+fonte; controlli strutturali (nome, punteggio, sigillo, 3 citazioni, fonte, attribuzione OSM+link, metodo, wordmark, **nessun contatto**); badge URL `…/hotel/way/777` corretto; **0 errori console**.
+
 ## [0.8.33] — 2026-06-25
 ### Aggiunto — «Report di mercato» vendibile (monetizzazione «da fare ora» #2)
 - Nuovo **Report insight** (menu Dati → «Report insight») — documento HTML stampabile/inviabile con **SOLO statistiche aggregate**: hotel analizzati, hotel per famiglie (≥soglia), quota family sui valutati, paesi coperti, **distribuzione dei punteggi**, **migliori destinazioni** (family/totale), **copertura per continente**. È la versione **esterna/commerciale** dell'infografica: **niente schede-hotel** (solo aggregati → opera derivata/Produced Work, ODbL §4.5b: nessuno share-alike; statistiche anonime → fuori dal GDPR) e **niente dati interni** (funnel CRM, valore atteso). Footer con attribuzione **«© OpenStreetMap contributors (ODbL)»** + metodo Kidotel + «non un database». Si apre nel browser di sistema (stampa/PDF). Riusa i comandi aggregati esistenti (`score_stats`, `score_histogram`, `coverage_by_country`).

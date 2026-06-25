@@ -947,6 +947,13 @@ export default function App() {
     };
     (window as unknown as { __infoHtml?: string }).__infoHtml = buildInfographicHtml(mock, infoOpts);
     (window as unknown as { __insightsHtml?: string }).__insightsHtml = buildInsightsHtml(mock.stats, mock.hist, mock.topCountries.map((c) => ({ country: c.country, total: c.total, strong: c.family })) as CoverageRow[]);
+    const mockH = { osm_type: "way", osm_id: 777, name: "Familienhotel Sole", city: "Lutago", province: null, region: "Alto Adige", country: "Italy", website: "https://example.com", phone: null, source: "OpenStreetMap", lat: 46.9, lon: 11.9, stars: 4, luxury: 1 } as Hotel;
+    const mockSc = { website_ok: true, pages_fetched: 3, family_fit_score: 91, signals: [
+      { key: "kids_club", weight: 22, present: true, quote: "Our kids club welcomes children from 3 to 12 with daily supervised activities and a dedicated playroom", url: "https://example.com/family" },
+      { key: "family_rooms", weight: 14, present: true, quote: "Spacious family rooms sleep up to 5 with bunk beds and connecting options", url: "https://example.com/rooms" },
+      { key: "kids_dining", weight: 10, present: true, quote: "Daily children's buffet with healthy options and early dinner times", url: null },
+    ] } as EnrichResult;
+    (window as unknown as { __certHtml?: string }).__certHtml = buildCertificateHtml(mockH, mockSc);
     (window as unknown as { __scoreHeat?: typeof scoreHeat }).__scoreHeat = scoreHeat;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [infoOpts, lang, settings.familyThreshold]);
@@ -1498,6 +1505,75 @@ export default function App() {
 </body></html>`;
   }
 
+  // «Kidotel Certified» (via economica: l'hotel paga l'audit/badge). Genera un CERTIFICATO brandizzato
+  // (Produced Work: punteggio + prova citata dal sito, attribuzione OSM) da inviare/stampare, e copia
+  // negli appunti uno SNIPPET BADGE che l'hotel incolla sul proprio sito (link a kidotel.co → backlink/SEO).
+  function badgeSnippet(h: Hotel, score: number): string {
+    const base = (settings.claimBase || "https://kidotel.co").replace(/\/+$/, "");
+    const url = `${base}/hotel/${h.osm_type}/${h.osm_id}`;
+    return `<a href="${url}" rel="noopener" target="_blank" style="display:inline-flex;align-items:center;gap:8px;font-family:system-ui,-apple-system,Segoe UI,sans-serif;text-decoration:none;background:#222223;color:#ffffff;padding:8px 14px;border-radius:999px;font-size:14px;font-weight:600;line-height:1"><b style="color:#FFC27B">Kidotel Certified</b><span style="opacity:.85;font-weight:500">Family-Fit ${score}/100</span></a>`;
+  }
+
+  function buildCertificateHtml(h: Hotel, sc: EnrichResult): string {
+    const esc = (s: unknown) => String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] as string));
+    const date = new Date().toLocaleDateString(lang);
+    const score = sc.family_fit_score ?? 0;
+    const present = sc.signals.filter((s) => s.present && s.quote).slice(0, 8);
+    const proof = present.map((s) => `<li><div class="pf-sig">${esc(t(("signal." + s.key) as TKey))}</div><blockquote>“${esc(shortQuote(s.quote as string, 32))}”</blockquote>${s.url ? `<a class="pf-src" href="${esc(s.url)}">${esc(t("cert.source"))}: ${esc(prettyHost(s.url))}</a>` : ""}</li>`).join("");
+    return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kidotel Certified — ${esc(h.name)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4 portrait; margin: 16mm; }
+  :root { --ink:#222223; --peach:#ffc27b; --amber:#ef9f27; --deep:#925a0c; --mut:#6b6b66; --line:#e6e4de; --soft:#fff3e4; }
+  * { box-sizing:border-box; } body { font-family:"Manrope",-apple-system,"Segoe UI",Arial,sans-serif; color:var(--ink); margin:0; padding:32px; background:#fff; }
+  h1,h2,h3 { font-family:"Sora",-apple-system,"Segoe UI",Arial,sans-serif; margin:0; }
+  .cert { max-width:760px; margin:0 auto; border:2px solid var(--peach); border-radius:22px; padding:34px 40px; position:relative; }
+  .top { display:flex; align-items:center; justify-content:space-between; gap:16px; border-bottom:1px solid var(--line); padding-bottom:16px; }
+  .seal { font-family:"Sora",sans-serif; font-weight:800; font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--deep); background:var(--soft); border:1px solid var(--peach); padding:7px 13px; border-radius:999px; }
+  .hotel { margin:26px 0 4px; font-size:30px; font-weight:800; line-height:1.1; }
+  .loc { color:var(--mut); font-size:15px; }
+  .scorewrap { display:flex; align-items:center; gap:18px; margin:24px 0; }
+  .score { font-family:"Sora",sans-serif; font-weight:800; font-size:54px; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1; }
+  .score small { font-size:22px; color:var(--mut); }
+  .score-l { font-size:14px; color:var(--deep); font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+  .vh { font-size:14px; color:var(--deep); font-weight:700; margin:18px 0 8px; }
+  ul.proof { list-style:none; padding:0; margin:0; display:grid; gap:12px; }
+  ul.proof li { border:1px solid var(--line); border-radius:12px; padding:12px 14px; break-inside:avoid; }
+  .pf-sig { font-family:"Sora",sans-serif; font-weight:700; font-size:13.5px; color:var(--ink); margin-bottom:4px; }
+  blockquote { margin:0; font-size:13.5px; color:#3a3a36; border-left:3px solid var(--peach); padding-left:10px; }
+  .pf-src { display:inline-block; margin-top:6px; font-size:11.5px; color:var(--deep); text-decoration:none; }
+  .foot { margin-top:22px; padding-top:14px; border-top:1px solid var(--line); font-size:11px; color:var(--mut); line-height:1.6; }
+  .foot a { color:var(--deep); }
+  .issued { font-size:13px; color:var(--mut); margin-top:10px; }
+  .noprint { max-width:760px; margin:0 auto 16px; } .pbtn { font:inherit; font-weight:600; font-size:13px; padding:9px 18px; border-radius:8px; border:none; background:var(--ink); color:#fff; cursor:pointer; }
+  @media print { .noprint { display:none; } body { padding:0; } }
+</style></head><body>
+  <div class="noprint"><button class="pbtn" onclick="window.print()">${esc(t("info.print"))}</button></div>
+  <div class="cert">
+    <div class="top"><div class="mark">${wordmarkSvg(26, "#222223")}</div><div class="seal">${esc(t("cert.doc.title"))}</div></div>
+    <h1 class="hotel">${esc(h.name)}</h1>
+    <div class="loc">${esc(locationOf(h))}</div>
+    <div class="scorewrap"><div class="score">${esc(score)}<small>/100</small></div><div><div class="score-l">${esc(t("cert.score"))}</div><div class="loc">${esc(t("cert.tagline"))}</div></div></div>
+    <div class="vh">${esc(t("cert.verified"))}</div>
+    <ul class="proof">${proof || `<li><blockquote>${esc(t("cert.tagline"))}</blockquote></li>`}</ul>
+    <div class="issued">${esc(t("cert.issued"))}: ${date}</div>
+    <div class="foot">${esc(t("cert.method"))}<br>© OpenStreetMap contributors (<a href="https://www.openstreetmap.org/copyright">ODbL</a>) · ${esc(t("footer.copyright"))} · Kidotel Radar ${APP_VERSION}</div>
+  </div>
+</body></html>`;
+  }
+
+  async function openCertificate(h: Hotel) {
+    const sc = scores[hkey(h)];
+    if (!sc || sc.family_fit_score == null) { setNotice(t("cert.noscore")); return; }
+    try {
+      await invoke("open_report", { html: buildCertificateHtml(h, sc) });
+      try { await navigator.clipboard.writeText(badgeSnippet(h, sc.family_fit_score)); } catch { /* clipboard non disponibile */ }
+      setNotice(t("cert.badged"));
+    } catch (e) { setError(String(e)); }
+  }
+
   function buildReportHtml(): string {
     const esc = (s: unknown) =>
       String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] as string));
@@ -1665,6 +1741,9 @@ export default function App() {
         {isOpen && (
           <>
             <OtaLinks h={h} t={t} />
+            {sc && sc.family_fit_score != null && (
+              <div className="cert-row no-print"><button className="cert-btn" onClick={() => void openCertificate(h)} title={t("cert.hint")}><Icon name="check" size={14} /> {t("cert.btn")}</button></div>
+            )}
             {sc && <ProofPanel sc={sc} t={t} lang={lang} />}
             {(reviewCounts[k] ?? 0) > 0 && <ReviewsPanel h={h} t={t} lang={lang} />}
           </>
