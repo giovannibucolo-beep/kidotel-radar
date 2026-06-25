@@ -17,8 +17,8 @@ type LiveMsg = (tr: (k: TKey) => string, lg: Lang) => string;
 
 // Impostazioni dell'app, persistite in localStorage.
 type Theme = "auto" | "light" | "dark";
-type Settings = { theme: Theme; familyThreshold: number; renderCap: number; erValue: number; erComm: number; erVolume: number };
-const DEFAULT_SETTINGS: Settings = { theme: "auto", familyThreshold: 60, renderCap: 500, erValue: 700, erComm: 4, erVolume: 20 };
+type Settings = { theme: Theme; familyThreshold: number; renderCap: number; erValue: number; erComm: number; erVolume: number; claimBase: string; bookingAid: string };
+const DEFAULT_SETTINGS: Settings = { theme: "auto", familyThreshold: 60, renderCap: 500, erValue: 700, erComm: 4, erVolume: 20, claimBase: "https://kidotel.co", bookingAid: "" };
 const SETTINGS_KEY = "kidotel.settings";
 function loadSettings(): Settings {
   try { return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") }; } catch { return DEFAULT_SETTINGS; }
@@ -327,6 +327,91 @@ const EN_SIGNAL: Record<string, string> = {
   childcare: "Childcare / babysitting", kids_dining: "Kids dining",
   activities_age: "Age-appropriate activities", safety: "Child safety",
 };
+
+// Link di «rivendica la scheda» per-hotel verso kidotel.co. Chiave stabile = osm_type/osm_id (idempotente
+// per l'upsert lato sito). La base è configurabile in Impostazioni perché l'endpoint del sito è da costruire
+// (vedi piano operativo, Fase 1/2). Deterministico: nessun dato inventato.
+function claimUrl(base: string, h: { osm_type: string; osm_id: number }, score: number | null, lang: Lang): string {
+  const b = (base || "https://kidotel.co").replace(/\/+$/, "");
+  const q = new URLSearchParams({ lang });
+  if (score != null) q.set("ff", String(score));
+  return `${b}/claim/${h.osm_type}/${h.osm_id}?${q.toString()}`;
+}
+
+// Citazione breve attribuita: i FATTI sono liberi, l'ESPRESSIONE no → max ~25 parole (vincolo legale del feed).
+function shortQuote(q: string, max = 25): string {
+  const w = q.trim().split(/\s+/);
+  return w.length <= max ? q.trim() : w.slice(0, max).join(" ") + "…";
+}
+
+// Email di outreach trilingue (IT/EN/RU): formale, voce al PLURALE (il team Kidotel), fa sentire l'hotel
+// SELEZIONATO dopo una ricerca rigorosa, cita le prove dal sito e invita a rivendicare la scheda gratuita.
+function outreachTemplate(lang: Lang, name: string, strengths: string, claim: string): { subject: string; body: string } {
+  if (lang === "it") {
+    return {
+      subject: `${name} — selezionato per la collezione Kidotel di hotel per famiglie verificati`,
+      body: `Gentile team di ${name},
+
+Oggi le famiglie vivono una frustrazione silenziosa: è quasi impossibile capire quali hotel siano davvero accoglienti per i bambini e quali lo dichiarino soltanto. Kidotel nasce per mettere fine a questa incertezza — una guida curata che raccomanda solo gli hotel la cui offerta per le famiglie è verificata, parola per parola, dal sito ufficiale della struttura. Nulla di inventato, nulla di pagato: solo ciò che un hotel dichiara e offre davvero.
+
+Il nostro team studia gli hotel di tutto il mondo e applica una selezione volutamente rigorosa. Una struttura merita il suo posto solo quando la sua dedizione alle famiglie è reale e dimostrabile — e ${name} ha superato questo standard. Esaminando il vostro sito ufficiale, abbiamo verificato, tra l'altro:
+${strengths || "  •  un'offerta autentica, pensata per le famiglie"}
+
+È proprio per questo che saremmo onorati di presentare ${name} — gratuitamente — alle famiglie che cercano esattamente questo tipo di soggiorno.
+
+Un posto in Kidotel è un'opportunità selettiva e autentica: una vetrina neutrale, basata sulla fiducia, che raggiunge gli ospiti giusti nel momento giusto, accanto a una cerchia ristretta e scelta con cura di hotel per famiglie.
+
+Confermate e attivate la vostra scheda gratuita qui:
+${claim}
+
+Un caro saluto,
+Il team Kidotel
+kidotel.co`,
+    };
+  }
+  if (lang === "ru") {
+    return {
+      subject: `${name} — выбран для коллекции проверенных семейных отелей Kidotel`,
+      body: `Уважаемая команда ${name},
+
+Сегодня семьи сталкиваются с тихой проблемой: почти невозможно понять, какие отели действительно приветливы к детям, а какие лишь заявляют об этом. Kidotel создан, чтобы покончить с этой неопределённостью — это кураторский гид, который рекомендует только те отели, чьё семейное предложение проверено, слово в слово, по официальному сайту самого отеля. Ничего выдуманного, ничего оплаченного: только то, что отель действительно заявляет и предоставляет.
+
+Наша команда изучает отели по всему миру и применяет намеренно строгий отбор. Отель заслуживает своё место только тогда, когда его забота о семьях реальна и доказуема — и ${name} соответствует этому стандарту. Изучив ваш официальный сайт, мы проверили, среди прочего:
+${strengths || "  •  подлинное предложение, ориентированное на семьи"}
+
+Именно поэтому мы были бы рады представить ${name} — бесплатно — семьям, которые ищут именно такой отдых.
+
+Место в Kidotel — это избирательная и подлинная возможность: нейтральная витрина, основанная на доверии, которая достигает нужных гостей в нужный момент, рядом с тщательно отобранным кругом семейных отелей.
+
+Подтвердите и активируйте бесплатный профиль здесь:
+${claim}
+
+С наилучшими пожеланиями,
+Команда Kidotel
+kidotel.co`,
+    };
+  }
+  return {
+    subject: `${name} — selected for Kidotel's verified family-hotel collection`,
+    body: `Dear ${name} Team,
+
+Families today face a quiet frustration: it is almost impossible to tell which hotels are genuinely welcoming to children and which merely claim to be. Kidotel was created to put an end to that uncertainty — a curated guide that recommends only hotels whose family offering is verified, word for word, from the property's own official website. Nothing invented, nothing paid for: only what a hotel truly states and delivers.
+
+Our team studies hotels across the world and applies a deliberately strict selection. A property earns its place only when its dedication to families is real and provable — and ${name} met that standard. Reviewing your official website, we verified, among others:
+${strengths || "  •  a genuine, family-focused offering"}
+
+This is precisely why we would be honoured to feature ${name} — at no cost — before the families who are actively searching for exactly this kind of stay.
+
+A place in Kidotel is a selective and genuine opportunity: a neutral, trust-first showcase that reaches the right guests at the right moment, alongside a small, carefully chosen circle of family hotels.
+
+Confirm and claim your free profile here:
+${claim}
+
+With our best regards,
+The Kidotel Team
+kidotel.co`,
+  };
+}
 
 // CRM / outreach: stati del contatto (devono combaciare con CONTACT_STATES in db.rs).
 const CONTACT_STATES = ["da_contattare", "contattato", "risposto", "trattativa", "partner", "rifiutato"] as const;
@@ -777,26 +862,10 @@ export default function App() {
   function emailContact(h: Hotel) {
     const sc = scores[hkey(h)];
     const present = sc ? sc.signals.filter((s) => s.present && s.quote).slice(0, 3) : [];
-    const strengths = present.map((s) => `  •  ${EN_SIGNAL[s.key] ?? s.key}: “${s.quote}”`).join("\n");
-
-    const subject = `${h.name} — selected for Kidotel's verified family-hotel collection`;
-    const body =
-`Dear ${h.name} Team,
-
-Families today face a quiet frustration: it is almost impossible to tell which hotels are genuinely welcoming to children and which merely claim to be. Kidotel was created to put an end to that uncertainty — a curated guide that recommends only hotels whose family offering is verified, word for word, from the property's own official website. Nothing invented, nothing paid for: only what a hotel truly states and delivers.
-
-Our team studies hotels across the world and applies a deliberately strict selection. A property earns its place only when its dedication to families is real and provable — and ${h.name} met that standard. Reviewing your official website, we verified, among others:
-${strengths || "  •  a genuine, family-focused offering"}
-
-This is precisely why we would be honoured to feature ${h.name} — at no cost — before the families who are actively searching for exactly this kind of stay.
-
-A place in Kidotel is a selective and genuine opportunity: a neutral, trust-first showcase that reaches the right guests at the right moment, alongside a small, carefully chosen circle of family hotels. We would be truly glad to welcome you among them.
-
-Might we ask you to confirm your interest? We will gladly share the next steps and how to make the most of your presence with us.
-
-With our best regards,
-The Kidotel Team
-kidotel.co`;
+    // etichetta segnale NELLA lingua dell'email (= lingua UI); la citazione resta verbatim dal sito.
+    const strengths = present.map((s) => `  •  ${t(("signal." + s.key) as TKey)}: “${s.quote}”`).join("\n");
+    const claim = claimUrl(settings.claimBase, h, sc?.family_fit_score ?? null, lang);
+    const { subject, body } = outreachTemplate(lang, h.name, strengths, claim);
     // non aprire mailto verso un indirizzo non recapitabile (rimbalzerebbe): copia la bozza.
     const undeliverable = h.email_status === "no_mx" || h.email_status === "bad";
     if (h.email && !undeliverable) {
@@ -1106,20 +1175,66 @@ kidotel.co`;
     return JSON.stringify({ app: "Kidotel Radar", exported: out.length, hotels: out }, null, 2);
   }
 
+  // Feed «sito» per kidotel.co: SOLO campi pubblicabili come PRODUCED WORK (identità + punteggio + fatti +
+  // UNA citazione breve attribuita con la fonte + link claim/affiliato + tier prezzo etichettato «stima»).
+  // NIENTE contatti privati (email/telefono/stato CRM): quelli restano nell'export CRM, non nel feed pubblico.
+  function rowsToFeed(list: HotelRow[]): string {
+    const base = settings.claimBase;
+    const aid = settings.bookingAid.trim();
+    const out = list.map((h) => {
+      let sig: SignalResult[] = [];
+      try { sig = h.score_breakdown ? JSON.parse(h.score_breakdown) : []; } catch { /* breakdown assente */ }
+      const present = sig.filter((s) => s.present);
+      const q = encodeURIComponent([h.name, h.city, h.country].filter(Boolean).join(" "));
+      const hasCoord = Number.isFinite(h.lat) && Number.isFinite(h.lon) && (h.lat !== 0 || h.lon !== 0);
+      return {
+        id: `${h.osm_type}/${h.osm_id}`,
+        name: h.name,
+        city: h.city, province: h.province, region: h.region, country: h.country,
+        lat: h.lat, lon: h.lon,
+        website: h.website || null,
+        stars: h.stars || null,
+        luxury: !!h.luxury,
+        family_fit_score: h.family_fit_score,
+        // fascia di prezzo SOLO come stima etichettata (mai un importo/prezzo OTA reale)
+        price_tier: h.price_tier ? { tier: h.price_tier, note: "Kidotel estimate — not an OTA price" } : null,
+        // feature come FATTI (la chiave; il sito la localizza), con un'etichetta EN d'appoggio
+        features: present.map((s) => ({ key: s.key, label_en: EN_SIGNAL[s.key] || s.key })),
+        // prova: citazione BREVE attribuita con la pagina-fonte
+        proof: present.filter((s) => s.quote).map((s) => ({ signal: s.key, quote: shortQuote(s.quote as string), source: s.url || h.website || null })),
+        claim_url: claimUrl(base, h, h.family_fit_score, lang),
+        links: {
+          booking: `https://www.booking.com/searchresults.html?ss=${q}${aid ? `&aid=${encodeURIComponent(aid)}` : ""}`,
+          map: hasCoord ? `https://www.openstreetmap.org/?mlat=${h.lat}&mlon=${h.lon}#map=18/${h.lat}/${h.lon}` : null,
+        },
+        source: "OpenStreetMap",
+      };
+    });
+    return JSON.stringify({
+      app: "Kidotel Radar",
+      feed: "website",
+      generated: out.length,
+      attribution: "© OpenStreetMap contributors",
+      license_note: "Hotel base data © OpenStreetMap contributors under ODbL. Publish as a Produced Work (rendered pages) with attribution; do NOT redistribute as a raw database. The price tier is a Kidotel estimate, not an OTA price.",
+      hotels: out,
+    }, null, 2);
+  }
+
   // Esegue l'export nel formato scelto: prende gli hotel selezionati e li salva su file.
-  async function runExport(format: "csv" | "json") {
+  async function runExport(format: "csv" | "json" | "feed") {
     if (exportBusy) return;
     setExportBusy(true);
     try {
       const list = await invoke<HotelRow[]>("select_hotels", { args: selToArgs(exportSel) });
       if (list.length === 0) { setNotice(t("xp.none")); return; }
-      const content = format === "csv" ? rowsToCsv(list) : rowsToJson(list);
+      const content = format === "csv" ? rowsToCsv(list) : format === "feed" ? rowsToFeed(list) : rowsToJson(list);
       const ext = format === "csv" ? "csv" : "json";
       const tag =
         exportSel.scope === "continent" ? exportSel.continent :
         exportSel.scope === "country" ? exportSel.country.toLowerCase().replace(/[^a-z0-9]+/gi, "-").slice(0, 30) :
         "tutti";
-      const path = await save({ defaultPath: `kidotel-${tag}.${ext}`, filters: [{ name: ext.toUpperCase(), extensions: [ext] }] });
+      const suffix = format === "feed" ? "-feed" : "";
+      const path = await save({ defaultPath: `kidotel-${tag}${suffix}.${ext}`, filters: [{ name: ext.toUpperCase(), extensions: [ext] }] });
       if (path) {
         await invoke("write_text_file", { path, content });
         setNotice(`${list.length} ${t("xp.done")}`);
@@ -2332,7 +2447,7 @@ function ExportSelectOverlay({
   busy: boolean;
   t: (k: TKey) => string;
   lang: Lang;
-  onExport: (format: "csv" | "json") => void;
+  onExport: (format: "csv" | "json" | "feed") => void;
   onClose: () => void;
 }) {
   const closeRef = useModalA11y(onClose);
@@ -2405,6 +2520,7 @@ function ExportSelectOverlay({
             <div className="xp-actions">
               <button className="tb-btn" disabled={busy || !count} onClick={() => onExport("csv")}><Icon name="download" size={15} /> CSV</button>
               <button className="tb-btn" disabled={busy || !count} onClick={() => onExport("json")}><Icon name="download" size={15} /> JSON</button>
+              <button className="tb-btn xp-feed-btn" disabled={busy || !count} onClick={() => onExport("feed")} title={t("xp.feedHint")}><Icon name="download" size={15} /> {t("xp.feed")}</button>
             </div>
           </div>
         </div>
@@ -2495,6 +2611,17 @@ function SettingsOverlay({
             <div><div className="set-label">{t("settings.renderCap")}</div><div className="set-hint">{t("settings.renderHint")}</div></div>
             <input type="number" min={50} max={20000} step={50} value={settings.renderCap}
               onChange={(e) => updateSettings({ renderCap: Math.max(50, Math.min(20000, Number(e.currentTarget.value) || 500)) })} />
+          </div>
+          <div className="set-group">{t("settings.kidotelGroup")}</div>
+          <div className="set-row">
+            <div><div className="set-label">{t("settings.claimBase")}</div><div className="set-hint">{t("settings.claimHint")}</div></div>
+            <input type="text" inputMode="url" value={settings.claimBase} placeholder="https://kidotel.co"
+              onChange={(e) => updateSettings({ claimBase: e.currentTarget.value.trim() })} />
+          </div>
+          <div className="set-row">
+            <div><div className="set-label">{t("settings.bookingAid")}</div><div className="set-hint">{t("settings.bookingHint")}</div></div>
+            <input type="text" value={settings.bookingAid} placeholder="—"
+              onChange={(e) => updateSettings({ bookingAid: e.currentTarget.value.trim() })} />
           </div>
           <div className="set-group">{t("er.assumptions")}</div>
           <div className="set-hint set-group-hint">{t("er.note")}</div>

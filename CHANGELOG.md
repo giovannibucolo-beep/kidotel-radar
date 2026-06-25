@@ -2,6 +2,16 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.32] — 2026-06-25
+### Aggiunto — Fase 1 verso kidotel.co: feed sito + link di claim + outreach trilingue
+- **Export «Feed sito»** (3° pulsante nell'export a criteri, accanto a CSV/JSON): JSON **«Produced Work»** per kidotel.co — per ogni hotel emette identità (nome, città/provincia/regione/paese, lat/lon), sito, stelle, lusso, `family_fit_score`, **features come fatti** (chiave + etichetta EN), **UNA prova breve attribuita** (citazione ≤~25 parole + `source` URL), `price_tier` etichettato **«Kidotel estimate — not an OTA price»**, `claim_url` per-hotel, `links` (Booking con `aid` se impostato, mappa OSM) e `source`. In testa: attribuzione **«© OpenStreetMap contributors»** + nota di licenza ODbL. **Nessun contatto privato** (email/telefono/CRM restano solo nell'export CRM). Rispetta i vincoli verificati: ODbL Produced-Work, verbatim fatti-non-espressione, niente prezzi reali.
+- **Link di claim per-hotel**: `{{base}}/claim/{{osm_type}}/{{osm_id}}?lang=..&ff=score` (chiave stabile per upsert idempotente lato sito). La **base è configurabile** in Impostazioni → «Integrazione kidotel.co» (default `https://kidotel.co`) perché l'endpoint `/claim` è da costruire lato sito (vedi piano operativo).
+- **ID affiliato Booking (`aid`)** opzionale in Impostazioni: se inserito, viene accodato ai link Booking del feed (id pubblico di tracciamento, non un segreto → safe per repo pubblica).
+- **Outreach CRM ora trilingue**: l'email «scrivi» segue la lingua dell'app (IT/EN/RU, prima solo EN), con etichette dei segnali tradotte, le prove verbatim e **il link di claim** in chiusura.
+- i18n: `settings.kidotelGroup/claimBase/claimHint/bookingAid/bookingHint`, `xp.feed/xp.feedHint` (it/en/ru, parità 286×3). NEWS Guida trilingue.
+### Verificato
+- `tsc` pulito; parità i18n **286×3**; anteprima: Impostazioni mostra il gruppo «Integrazione kidotel.co» (base claim `https://kidotel.co` + campo `aid`), export mostra il 3° pulsante **«Feed sito»** col tooltip, **0 errori console**; test logico del feed: claim URL corretto, niente contatti privati, `aid` accodato, prezzo come stima, prova con `source` (fallback al sito), attribuzione OSM.
+
 ## [0.8.31] — 2026-06-25
 ### Corretto — i link agli hotel ora FUNZIONANO (Google falliva per il muro cookie UE)
 - **Causa del «Google Hotels non funziona»** (verificata live, utente in Italia): `google.com/travel/*` e `google.com/maps/*` rispondono **302 → `consent.google.com?gl=IT`** («Prima di continuare») PRIMA di mostrare l'hotel; e seguendo il flusso si finisce su `…/travel/unsupported`. Inoltre la scheda esatta di un hotel su Google richiede un **entity-id opaco** non derivabile dai nostri dati. → **Google rimosso del tutto** (Hotels e Maps).

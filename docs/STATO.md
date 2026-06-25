@@ -2,8 +2,13 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.31` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.32` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-25
+
+## Fatto v0.8.32 (2026-06-25) — Fase 1 verso kidotel.co (feed sito + link claim + outreach trilingue)
+- Implementata la **Fase 1** del piano operativo (vedi `presentazione/kidotel-piano-operativo.html`): export **«Feed sito»** Produced-Work per kidotel.co (identità+punteggio+fatti+prova breve con fonte+claim_url+links booking(aid)/mappa+attribuzione OSM; NIENTE contatti privati), **link di claim per-hotel** `{base}/claim/{osm_type}/{osm_id}?lang&ff` (base configurabile in Impostazioni→Integrazione kidotel.co), **ID affiliato Booking (aid)** opzionale, **outreach CRM trilingue** (IT/EN/RU) col link di claim.
+- Verificato: tsc pulito, parità 286×3, anteprima (gruppo Impostazioni + pulsante «Feed sito» + 0 errori), test logico feed (claim url, no contatti, aid, stima, prova+source). Rispettati i vincoli legali verificati (ODbL produced-work, verbatim, no prezzi reali).
+- **Prossimo**: lato kidotel.com servono import feed + endpoint `/claim` (Django) — vedi piano. In sospeso: piano di uso economico della banca dati (ricerca verificata pronta, da presentare).
 
 ## Fatto v0.8.31 (2026-06-25) — link hotel che FUNZIONANO (Google falliva per muro cookie UE)
 - «Google Hotels non funziona» = da IT google.com/* fa 302→consent.google.com (gl=IT) prima dell'hotel, e seguendo il flusso si arriva a `/travel/unsupported`; la scheda esatta richiede un entity-id opaco non derivabile. → Google tolto del tutto (Hotels+Maps).
