@@ -1439,6 +1439,34 @@ pub async fn enrich_hotel(app: tauri::AppHandle, args: EnrichArgs) -> Result<Enr
     })
 }
 
+/// «Family-Fit as a Service»: valuta UN sito fornito dal cliente (nome opzionale lato UI, qui basta il
+/// sito) e restituisce punteggio + segnali con prova citata. NON tocca il database Kidotel né lo legge:
+/// scarica solo il sito dato e applica lo stesso motore di scoring usato per l'archivio. È la metodologia
+/// venduta come servizio — il dato resta del cliente, il nostro DB non esce di casa.
+#[tauri::command]
+pub async fn score_website(website: String) -> Result<EnrichResult, String> {
+    let w = website.trim();
+    if w.is_empty() {
+        return Ok(EnrichResult { website_ok: false, pages_fetched: 0, family_fit_score: 0, signals: absent_signals() });
+    }
+    // se manca lo schema, anteponi https:// (il cliente può incollare "hotel.com")
+    let url = if w.starts_with("http://") || w.starts_with("https://") { w.to_string() } else { format!("https://{w}") };
+    let client = enrich_client();
+    // stesso tetto duro di enrich_hotel: un sito lento non deve appendere l'invoke
+    let (pages, _email, _price) = match tokio::time::timeout(
+        std::time::Duration::from_secs(16),
+        gather_pages(client, &url),
+    )
+    .await
+    {
+        Ok(res) => res,
+        Err(_) => (Vec::new(), None, None),
+    };
+    let website_ok = !pages.is_empty();
+    let (score, signals) = score_pages(&pages);
+    Ok(EnrichResult { website_ok, pages_fetched: pages.len() as u32, family_fit_score: score, signals })
+}
+
 #[derive(Serialize)]
 pub struct EnrichOne {
     pub id: String, // "osm_type/osm_id"
@@ -1672,6 +1700,22 @@ mod tests {
             );
             assert!(!covered.is_empty(), "nessuna risposta Overpass");
             assert!(secs < 90.0, "troppo lento: {secs:.1}s (atteso ben meno con la rotazione endpoint)");
+        });
+    }
+
+    // `cargo test -- --ignored live_score_website --nocapture`
+    #[test]
+    #[ignore]
+    fn live_score_website() {
+        tauri::async_runtime::block_on(async {
+            let r = super::score_website("https://www.schwarzenstein.com".to_string()).await.unwrap();
+            let present = r.signals.iter().filter(|s| s.present).count();
+            println!(
+                "FAMILY-FIT-AS-A-SERVICE: score {} · pages {} · ok {} · segnali presenti {}",
+                r.family_fit_score, r.pages_fetched, r.website_ok, present
+            );
+            assert!(r.website_ok, "sito raggiungibile");
+            assert!(r.family_fit_score > 0, "un family hotel reale deve avere punteggio > 0");
         });
     }
 

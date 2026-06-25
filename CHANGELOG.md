@@ -2,6 +2,14 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.36] — 2026-06-25
+### Aggiunto — «Family-Fit as a Service»: valuta un sito su richiesta, senza toccare il DB
+- Nuovo strumento (menu **Dati → «Valuta un hotel su richiesta»**): incolli il **sito di un hotel** e Radar applica lo **stesso motore di scoring** dell'archivio, restituendo punteggio + segnali con **prova citata** e la **risposta in formato API (JSON)**. **Non legge né scrive il DB Kidotel**: scarica solo il sito fornito → la metodologia è il prodotto, il dato resta del cliente. Implementa la via «family-fit as a service» del piano di uso economico.
+- **Rust**: nuovo comando `score_website(website)` che riusa `gather_pages` + `score_pages` (stesso tetto duro 16s, normalizza l'URL senza schema), zero accesso al DB; registrato in `lib.rs`. Test live `live_score_website`.
+- **Frontend**: `FtoolOverlay` (input URL + «Valuta» + risultato con `ProofPanel` + `<details>` JSON), comando `runFtool`, stato dedicato, voce di menu, CSS `.ft-*`. i18n `ftool.*` (it/en/ru, parità **338×3**).
+### Verificato
+- `cargo test`: 13 passati; **live `score_website` su un family hotel reale** (schwarzenstein.com) → **score 76, 3 pagine, 5 segnali, 1,7s, DB non toccato**. `tsc` pulito; parità **338×3**; anteprima: overlay reso (titolo, input, «Valuta» disabilitato a vuoto, nota «DB non toccato»), wiring click→run ok, **risultato con mock realistico** (76/100, «3 pagine · 5 servizi con prova», ProofPanel coi pesi +22/+18/+14/+12/+10 e 2 «non dichiarato», JSON API con `family_fit_score:76`); **0 errori console**.
+
 ## [0.8.35] — 2026-06-25
 ### Aggiunto — «Analisi premium» per-hotel: il punteggio diventa insight azionabile
 - Nella riga di un hotel **valutato** (espandi), accanto a «Certificato», ora c'è **«Analisi premium»** → apre un report (browser di sistema, stampa/PDF) che trasforma il family-fit in **insight vendibile all'hotel**:

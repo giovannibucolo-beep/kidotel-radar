@@ -1,6 +1,6 @@
 [package]
 name = "kidotel-radar"
-version = "0.8.35"
+version = "0.8.36"
 description = "Kidotel Radar — scoperta automatica di hotel per famiglie nel mondo"
 authors = ["Kidotel"]
 edition = "2021"

@@ -273,6 +273,19 @@ body { margin: 0; background: var(--bg); }
 .cert-row { margin: 6px 0; }
 .cert-btn { font-size: 12px; font-weight: 700; color: var(--on-brand); background: var(--brand); border: 1px solid var(--brand); border-radius: 999px; padding: 6px 13px; min-height: 28px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .cert-btn:hover { background: var(--accent); border-color: var(--accent); }
+.ft-row { display: flex; gap: 8px; margin: 12px 0 6px; }
+.ft-url { flex: 1; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font: inherit; background: var(--surface); color: var(--text); }
+.ft-run { white-space: nowrap; }
+.ft-note { font-size: 12.5px; color: var(--text-2); display: flex; align-items: center; gap: 6px; margin: 6px 0 4px; }
+.ft-err { color: #b23b21; font-size: 13px; margin: 8px 0; }
+.ft-result { margin-top: 12px; }
+.ft-scorebar { display: flex; align-items: baseline; gap: 14px; padding: 10px 0 4px; }
+.ft-score-v { font-family: var(--font-head); font-weight: 800; font-size: 34px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ft-score-m { font-size: 16px; color: var(--text-2); }
+.ft-meta { font-size: 13px; color: var(--text-2); }
+.ft-json { margin-top: 12px; font-size: 12px; }
+.ft-json summary { cursor: pointer; color: var(--brand-strong); font-weight: 600; }
+.ft-json pre { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; overflow: auto; max-height: 260px; font-size: 11.5px; }
 .proof-absent { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .absent-chip { font-size: 11px; color: var(--text-3); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; }
 

@@ -545,7 +545,7 @@ export default function App() {
   const [crmFilter, setCrmFilter] = useState<ContactStatus | "all">("all");
   const [showAssump, setShowAssump] = useState(false);
   const [settings, setSettings] = useState<Settings>(loadSettings);
-  const [overlay, setOverlay] = useState<"guide" | "settings" | "export" | "info" | null>(null);
+  const [overlay, setOverlay] = useState<"guide" | "settings" | "export" | "info" | "ftool" | null>(null);
   // #8 — selezione a criteri per l'export "cowork": compone il gruppo di hotel da esportare.
   const [exportSel, setExportSel] = useState<ExportSel>(DEFAULT_EXPORT_SEL);
   const [exportCount, setExportCount] = useState<number | null>(null);
@@ -555,6 +555,11 @@ export default function App() {
   const [infoOpts, setInfoOpts] = useState<InfoOpts>(DEFAULT_INFO_OPTS);
   const [infoBusy, setInfoBusy] = useState(false);
   const [reportBusy, setReportBusy] = useState(false);
+  // «Family-Fit as a Service»: valuta un sito fornito dal cliente, senza toccare il DB.
+  const [ftUrl, setFtUrl] = useState("");
+  const [ftBusy, setFtBusy] = useState(false);
+  const [ftResult, setFtResult] = useState<EnrichResult | null>(null);
+  const [ftErr, setFtErr] = useState("");
   const erValue = settings.erValue, erComm = settings.erComm, erVolume = settings.erVolume;
   function updateSettings(p: Partial<Settings>) {
     setSettings((s) => {
@@ -1668,6 +1673,20 @@ export default function App() {
 </body></html>`;
   }
 
+  // «Family-Fit as a Service»: valuta il sito fornito dal cliente. Non legge né scrive il DB Kidotel:
+  // la metodologia è il prodotto, il dato resta del cliente. Dimostra l'API come servizio.
+  async function runFtool() {
+    const url = ftUrl.trim();
+    if (!url || ftBusy) return;
+    setFtBusy(true); setFtErr(""); setFtResult(null);
+    try {
+      const r = await invoke<EnrichResult>("score_website", { website: url });
+      setFtResult(r);
+      if (!r.website_ok) setFtErr(t("ftool.unreachable"));
+    } catch (e) { setFtErr(String(e)); }
+    finally { setFtBusy(false); }
+  }
+
   async function openHotelAnalytics(h: Hotel) {
     const sc = scores[hkey(h)];
     if (!sc || sc.family_fit_score == null) { setNotice(t("analytics.noscore")); return; }
@@ -1914,6 +1933,12 @@ export default function App() {
           t={t} onPrint={printInfographic} onSave={saveInfographic} onClose={() => setOverlay(null)}
         />
       )}
+      {overlay === "ftool" && (
+        <FtoolOverlay
+          url={ftUrl} setUrl={setFtUrl} busy={ftBusy} result={ftResult} err={ftErr}
+          onRun={runFtool} t={t} lang={lang} onClose={() => setOverlay(null)}
+        />
+      )}
 
       <nav className="menubar" aria-label={t("nav.label")}>
         <button className={"menu-tab" + (viewMode === "hotel" ? " active" : "")} onClick={openHotel}><Icon name="list" size={16} /> {t("nav.hotel")}</button>
@@ -1946,6 +1971,9 @@ export default function App() {
                 <div className="menu-sep" />
                 <div className="menu-group">{t("reviews.title")}</div>
                 <button role="menuitem" onClick={() => { setDataMenuOpen(false); importReviews(); }}><Icon name="upload" size={15} /> {t("reviews.import")}</button>
+                <div className="menu-sep" />
+                <div className="menu-group">{t("ftool.group")}</div>
+                <button role="menuitem" onClick={() => { setDataMenuOpen(false); setOverlay("ftool"); }}><Icon name="signal" size={15} /> {t("ftool.open")}</button>
               </div>
             </>
           )}
@@ -2838,6 +2866,55 @@ function GuideOverlay({ lang, t, onClose }: { lang: Lang; t: (k: TKey) => string
             </div>
           ))}
           <div className="guide-foot"><Icon name="check" size={15} /> {t("footer.proof")} · {t("footer.copyright")}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// «Family-Fit as a Service»: incolli un sito → punteggio + prova, senza toccare il DB. Demo dell'API.
+function FtoolOverlay({
+  url, setUrl, busy, result, err, onRun, t, lang, onClose,
+}: {
+  url: string; setUrl: (s: string) => void; busy: boolean; result: EnrichResult | null; err: string;
+  onRun: () => void; t: (k: TKey) => string; lang: Lang; onClose: () => void;
+}) {
+  const closeRef = useModalA11y(onClose);
+  const present = result ? result.signals.filter((s) => s.present).length : 0;
+  const apiJson = result ? JSON.stringify({
+    website_ok: result.website_ok,
+    pages_fetched: result.pages_fetched,
+    family_fit_score: result.family_fit_score,
+    signals: result.signals.filter((s) => s.present).map((s) => ({ key: s.key, weight: s.weight, quote: s.quote, source: s.url })),
+  }, null, 2) : "";
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" role="dialog" aria-modal="true" aria-label={t("ftool.title")} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h2><Icon name="signal" size={18} /> {t("ftool.title")}</h2>
+          <button ref={closeRef} className="modal-close" onClick={onClose} aria-label={t("settings.close")}><Icon name="x" size={18} /></button>
+        </div>
+        <div className="modal-body">
+          <div className="xp-hint">{t("ftool.intro")}</div>
+          <div className="ft-row">
+            <input className="ft-url" type="url" inputMode="url" value={url} placeholder={t("ftool.placeholder")}
+              onChange={(e) => setUrl(e.currentTarget.value)} onKeyDown={(e) => { if (e.key === "Enter") onRun(); }} autoFocus />
+            <button className="tb-btn ft-run" disabled={busy || !url.trim()} onClick={onRun}>
+              <Icon name="signal" size={15} /> {busy ? t("ftool.scoring") : t("ftool.run")}
+            </button>
+          </div>
+          <div className="ft-note"><Icon name="check" size={13} /> {t("ftool.note")}</div>
+          {err && <div className="ft-err">{err}</div>}
+          {result && result.website_ok && (
+            <div className="ft-result">
+              <div className="ft-scorebar">
+                <div className="ft-score"><span className="ft-score-v">{result.family_fit_score}</span><span className="ft-score-m">/100</span></div>
+                <div className="ft-meta">{t("ftool.meta").replace("{pages}", String(result.pages_fetched)).replace("{n}", String(present))}</div>
+              </div>
+              <ProofPanel sc={result} t={t} lang={lang} />
+              <details className="ft-json"><summary>{t("ftool.json")}</summary><pre>{apiJson}</pre></details>
+            </div>
+          )}
         </div>
       </div>
     </div>

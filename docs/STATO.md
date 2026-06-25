@@ -2,8 +2,13 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.35` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.36` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-25
+
+## Fatto v0.8.36 (2026-06-25) — Family-Fit as a Service (valuta un sito su richiesta, no DB)
+- Menu Dati → «Valuta un hotel su richiesta»: incolli un sito, Radar applica lo stesso scoring e restituisce punteggio + prova citata + risposta API (JSON). Non tocca il DB Kidotel (solo il sito fornito). Rust `score_website` (riusa gather_pages+score_pages, no DB) registrato; frontend `FtoolOverlay`+`runFtool`. Implementa la via «family-fit as a service».
+- Verificato: cargo test 13 passati + live `score_website` reale (schwarzenstein.com → score 76, 5 segnali, 1,7s); tsc pulito, parità 338×3; anteprima (overlay + wiring + risultato con mock realistico + JSON), 0 errori console.
+- **Tutte le vie economiche interne fatte**: SEO/feed · report di mercato · Kidotel Certified · analytics premium · **family-fit as a service**. Resta: outreach 1:1 (motore già pronto), e lato kidotel.com import feed + /claim (nota tecnica consegnata).
 
 ## Fatto v0.8.35 (2026-06-25) — Analisi premium per hotel (insight azionabile vendibile)
 - Riga hotel valutato → «Analisi premium»: report che trasforma il punteggio in insight: percentile mondiale (da score_histogram, es. Top 8%), benchmark di paese, breakdown dei 7 segnali attivi (pesi da signals.json, max 94), leve di miglioramento (segnali mancanti pesati + potenziale). Produced Work ODbL-safe, nessun dato di altri hotel/interno. Implementa la via «analytics premium». `SIGNAL_CATALOG`, `buildAnalyticsHtml`/`openHotelAnalytics`.

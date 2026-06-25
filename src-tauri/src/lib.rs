@@ -13,6 +13,7 @@ pub fn run() {
             engine::discover_area,
             engine::enrich_hotel,
             engine::enrich_batch,
+            engine::score_website,
             engine::translate,
             db::list_hotels,
             db::count_hotels,
