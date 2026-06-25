@@ -2,6 +2,13 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.21] — 2026-06-25
+### Corretto — la scansione stelle veloce ora si attiva DAVVERO
+- Il frontend chiedeva ancora blocchi da **180** alla ri-scansione stelle: con 180 il backend resta a **un solo blocco** (1 endpoint) e la concorrenza introdotta in 0.8.20 non entrava in gioco. Ora chiede **700** → 4 query concorrenti (una per mirror Overpass) → il **~3,8×** misurato si applica anche nell'app installata.
+- `release.mjs`: controllo di esistenza del tag «silenzioso» (niente riga `fatal:` al primo tag di una versione).
+### Verificato
+- `tsc` pulito; lo stesso percorso (limite 700 → 4 blocchi) è quello provato live in 0.8.20 (700 hotel in ~42s).
+
 ## [0.8.20] — 2026-06-25
 ### Aggiunto — Fascia di costo € → €€€€€ (il classico $ → $$$$$)
 - Ogni hotel ha ora un **indicatore di costo a 5 livelli** (€ economico → €€€€€ molto caro), accanto a stelle e voto. **COMBINATO** (scelta dell'utente): se il sito pubblica una fascia di prezzo strutturata (schema.org **`priceRange`**) usiamo quel **dato REALE** — il tooltip mostra il prezzo a notte stimato e la **citazione verbatim** dal sito (badge più marcato); altrimenti una **STIMA** da segnali reali — stelle ★ (OSM) + lusso + indice costo-vita del paese (badge più tenue). **Nessun prezzo inventato.**

@@ -577,7 +577,8 @@ export default function App() {
     let checked = 0, withStars = 0;
     try {
       while (!covStopRef.current) {
-        const b = await invoke<{ processed: number; with_stars: number; remaining: number }>("backfill_stars", { limit: 180 });
+        // blocco grande: il backend lo spezza in query concorrenti (una per endpoint Overpass) → ~3,8× più veloce.
+        const b = await invoke<{ processed: number; with_stars: number; remaining: number }>("backfill_stars", { limit: 700 });
         if (b.processed === 0) break;
         checked += b.processed;
         withStars += b.with_stars;

@@ -2,8 +2,11 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.20` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.21` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-25
+
+## Fatto v0.8.21 (2026-06-25) — la velocità stelle si attiva davvero
+- Il frontend chiedeva ancora `limit:180` → 1 blocco, niente concorrenza. Ora `limit:700` → 4 query concorrenti (1/endpoint): il ~3,8× vale anche nell'app. + release.mjs: check tag silenzioso (niente `fatal:`).
 
 ## Fatto v0.8.20 (2026-06-25) — fascia di costo €→€€€€€ + stelle ultra-veloci + .exe automatica
 - **Costo €→€€€€€ ($→$$$$$)**: indicatore a 5 livelli per hotel. COMBINATO: `priceRange` schema.org dal sito = REALE (con prova nel tooltip + prezzo/notte), altrimenti STIMA da stelle+lusso+indice-paese. Niente prezzi inventati. Rust `extract_price` (+colonne `price_tier/eur/src`, `set_price`), frontend `priceTierOf`+badge, i18n `price.*` it/en/ru, sezione Guida.
