@@ -2,8 +2,14 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.26` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.27` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-25
+
+## Fatto v0.8.27 (2026-06-25) — ticker/didascalia traducibili al volo + scorrimento fluido
+- Causa «testo non tradotto»: stringhe già tradotte salvate in stato (area, covNote/starsNote/enrichNote) → congelate. Fix: tipo `LiveMsg = (t,lang)=>string`; i messaggi sono FUNZIONI valutate al render → si traducono cambiando lingua anche a scansione in corso. `runCompleteCountry` riceve un prefisso-funzione. Export/print usano `area(t,lang)`.
+- Ticker: ripete le voci (≥4) per riempire il nastro (niente spazio vuoto), durata stabile (no reset ad ogni dato), loop -50% continuo destra→sinistra.
+- AUDIT trilingue completo: parità chiavi i18n 275×3 (nessuna mancante), Guida 13 sez + 28 NEWS tutte tradotte; workflow multi-agente (verifica avversariale) ha trovato 3 stringhe hardcoded → corrette via t(): «LIVE»→ticker.live (RU «В ЭФИРЕ»), «hotel» (intestazione stampa)→print.hotels, «family» (riga paese Sfoglia)→browse.family. Memoria: [[kidotel-trilingue-sempre]].
+- Verificato (anteprima): ticker IT→RU tradotto sul posto coi numeri live; chip LIVE→В ЭФИРЕ; nastro pieno e fluido; progress coerente; tsc ok, parità 275×3, 0 errori.
 
 ## Fatto v0.8.26 (2026-06-25) — numeri coerenti + scansione non più bloccata sull'Austria
 - **Avanzamento valutazione >100%** (79.443/79.416): causa = upsert `website = excluded.website` azzerava il sito di hotel già valutati (scored > with_site). Fix: upsert `COALESCE(NULLIF(excluded.website,''), hotels.website)` (+phone) preserva il sito; avanzamento = scored/(scored+to_score) con nuovo campo `to_score` in score_stats. Mai più >100%.

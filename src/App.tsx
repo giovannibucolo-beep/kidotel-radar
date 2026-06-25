@@ -9,6 +9,12 @@ import { Wordmark, wordmarkSvg } from "./components/Wordmark";
 import { GUIDE, NEWS } from "./guide";
 import "./App.css";
 
+// Messaggio LIVE «riparametrato sulla lingua»: invece di salvare una STRINGA già tradotta (che resta
+// congelata nella lingua di quando è stata creata), salviamo una funzione che produce il testo con la
+// lingua CORRENTE. Così l'avanzamento delle scansioni e la didascalia archivio si traducono al volo
+// quando l'utente cambia lingua, anche a scansione in corso.
+type LiveMsg = (tr: (k: TKey) => string, lg: Lang) => string;
+
 // Impostazioni dell'app, persistite in localStorage.
 type Theme = "auto" | "light" | "dark";
 type Settings = { theme: Theme; familyThreshold: number; renderCap: number; erValue: number; erComm: number; erVolume: number };
@@ -388,7 +394,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hotels, setHotels] = useState<Hotel[]>([]);
-  const [area, setArea] = useState<string | null>(null);
+  const [area, setArea] = useState<LiveMsg | null>(null);
   const [scores, setScores] = useState<Record<string, EnrichResult>>({});
   const [enriching, setEnriching] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -435,9 +441,9 @@ export default function App() {
   const [notice, setNotice] = useState<string | null>(null);
   // Avanzamenti LIVE delle scansioni in corso (una per canale: copertura, stelle, valutazione). Vengono
   // mostrati insieme in un ticker «breaking news» che scorre, ognuno con i suoi dati aggiornati.
-  const [covNote, setCovNote] = useState<string | null>(null);
-  const [starsNote, setStarsNote] = useState<string | null>(null);
-  const [enrichNote, setEnrichNote] = useState<string | null>(null);
+  const [covNote, setCovNote] = useState<LiveMsg | null>(null);
+  const [starsNote, setStarsNote] = useState<LiveMsg | null>(null);
+  const [enrichNote, setEnrichNote] = useState<LiveMsg | null>(null);
   const [archiveTotal, setArchiveTotal] = useState<number | null>(null);
   const [archivePage, setArchivePage] = useState(0); // pagina dell'archivio (5000 per pagina)
   const [scoreStats, setScoreStats] = useState<ScoreStats | null>(null);
@@ -489,8 +495,7 @@ export default function App() {
       setDbQuery("");
       if (n > 0 || total > 0) {
         const pages = Math.max(1, Math.ceil(total / ARCHIVE_PAGE));
-        const pageNote = pages > 1 ? ` — ${t("page.page")} ${page + 1}/${pages}` : "";
-        setArea(t("archive.label") + pageNote);
+        setArea(() => (tr: (k: TKey) => string) => tr("archive.label") + (pages > 1 ? ` — ${tr("page.page")} ${page + 1}/${pages}` : ""));
       }
     } catch {
       /* nel browser di anteprima non c'è Tauri */
@@ -508,7 +513,7 @@ export default function App() {
       const rows = await invoke<HotelRow[]>("list_hotels", { limit: 5000, search: q });
       const n = applyRows(rows);
       setArchiveTotal(n);
-      setArea(`${t("search.results")}: «${q}» (${n.toLocaleString(lang)}${n >= 5000 ? "+" : ""})`);
+      setArea(() => (tr: (k: TKey) => string, lg: Lang) => `${tr("search.results")}: «${q}» (${n.toLocaleString(lg)}${n >= 5000 ? "+" : ""})`);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -591,14 +596,14 @@ export default function App() {
 
   // Core riusabile (no guard, no covBusy): scansiona un paese regione per regione. Ritorna i NUOVI.
   // `prefix` (es. "Europa 2/5 · ") antepone il contesto continente alle note durante lo scan continente.
-  async function runCompleteCountry(country: string, prefix = "", force = false): Promise<number> {
-    setCovNote(`${prefix}${country}: ${t("cov.enumerating")}…`);
+  async function runCompleteCountry(country: string, prefix: (tr: (k: TKey) => string) => string = () => "", force = false): Promise<number> {
+    setCovNote(() => (tr: (k: TKey) => string) => `${prefix(tr)}${country}: ${tr("cov.enumerating")}…`);
     // Nominatim: usa l'alias di query quando il nome pycountry non si geocodifica bene; il paese
     // TIMBRATO sugli hotel resta però il nome canonico (così la copertura raggruppa con il resto).
     // Se Nominatim è momentaneamente giù NON lanciamo (bloccava l'intero giro del mondo): 0 regioni →
     // il paese si salta e si riprende al giro successivo.
     const regions = await invoke<SubArea[]>("list_subareas", { query: nominatimQuery(country) }).catch(() => [] as SubArea[]);
-    if (!regions.length) { setCovNote(`${prefix}${country}: ${t("cov.noregions")}`); return 0; }
+    if (!regions.length) { setCovNote(() => (tr: (k: TKey) => string) => `${prefix(tr)}${country}: ${tr("cov.noregions")}`); return 0; }
     // INCREMENTALE: salta le regioni già scansionate negli ultimi 30 giorni (niente da capo ogni volta).
     const keys = regions.map((r) => `${r.osm_type}/${r.osm_id}`);
     const done = force ? new Set<string>() : new Set(await invoke<string[]>("areas_scanned_within", { keys, days: 30 }).catch(() => []));
@@ -608,8 +613,8 @@ export default function App() {
       if (covStopRef.current) break;
       const rg = regions[i];
       if (done.has(`${rg.osm_type}/${rg.osm_id}`)) { skipped++; continue; } // già fatta di recente
-      const skipNote = skipped ? `, ${skipped} ${t("cov.skipped")}` : "";
-      setCovNote(`${prefix}${country}: ${t("cov.region")} ${i + 1}/${regions.length} — ${rg.name}… (+${(latest - before).toLocaleString(lang)} ${t("cov.new")}${skipNote})`);
+      const sk = skipped, gained = latest - before, rgName = rg.name, idx = i + 1, tot = regions.length;
+      setCovNote(() => (tr: (k: TKey) => string, lg: Lang) => `${prefix(tr)}${country}: ${tr("cov.region")} ${idx}/${tot} — ${rgName}… (+${gained.toLocaleString(lg)} ${tr("cov.new")}${sk ? `, ${sk} ${tr("cov.skipped")}` : ""})`);
       try {
         await invoke<number>("discover_area", { args: { osmType: rg.osm_type, osmId: rg.osm_id, s: rg.s, n: rg.n, w: rg.w, e: rg.e, country } });
         latest = coverageTotalOf(await loadCoverage(), country);
@@ -652,7 +657,7 @@ export default function App() {
       for (let i = 0; i < list.length; i++) {
         if (covStopRef.current) break;
         // un paese che fallisce non ferma il resto del continente: lo saltiamo e proseguiamo.
-        try { total += await runCompleteCountry(list[i], `${t(("cont." + contKey) as TKey)} ${i + 1}/${list.length} · `); }
+        try { total += await runCompleteCountry(list[i], (tr) => `${tr(("cont." + contKey) as TKey)} ${i + 1}/${list.length} · `); }
         catch (e) { console.warn("Completa continente: paese saltato", list[i], e); }
       }
       setNotice(`${t(("cont." + contKey) as TKey)}: +${total.toLocaleString(lang)} ${t("cov.new")}${covStopRef.current ? ` (${t("cov.stopped")})` : ""}.`);
@@ -680,7 +685,7 @@ export default function App() {
         const country = ALL_COUNTRIES[i];
         const k = CONTINENT[country] || "other";
         try {
-          total += await runCompleteCountry(country, `${t(("cont." + k) as TKey)} · ${i + 1}/${ALL_COUNTRIES.length} · `);
+          total += await runCompleteCountry(country, (tr) => `${tr(("cont." + k) as TKey)} · ${i + 1}/${ALL_COUNTRIES.length} · `);
         } catch (e) {
           // Un paese che fallisce (es. Nominatim/Overpass momentaneamente giù) NON deve FERMARE il giro
           // del mondo: prima un'eccezione qui interrompeva tutto col cursore bloccato PRIMA del paese →
@@ -719,7 +724,8 @@ export default function App() {
         if (b.processed === 0) break;
         checked += b.processed;
         withStars += b.with_stars;
-        setStarsNote(`${t("stars.backfilling")}: ${checked.toLocaleString(lang)} ${t("stars.checked")} · ${withStars.toLocaleString(lang)} ${t("stars.classified")} · ${b.remaining.toLocaleString(lang)} ${t("stars.remaining")}`);
+        const ck = checked, ws = withStars, rem = b.remaining;
+        setStarsNote(() => (tr: (k: TKey) => string, lg: Lang) => `${tr("stars.backfilling")}: ${ck.toLocaleString(lg)} ${tr("stars.checked")} · ${ws.toLocaleString(lg)} ${tr("stars.classified")} · ${rem.toLocaleString(lg)} ${tr("stars.remaining")}`);
         if (b.remaining === 0) break;
       }
       setNotice(`${t("stars.done")}: ${withStars.toLocaleString(lang)} / ${checked.toLocaleString(lang)}${covStopRef.current ? ` (${t("cov.stopped")})` : ""}.`);
@@ -868,7 +874,7 @@ kidotel.co`;
       // i voti già calcolati per questi hotel restano disponibili dalla mappa scores.
       setHotels(res.hotels);
       setArchiveTotal(null); // vista area: la statistica mostra il conteggio dell'area
-      setArea(res.area_label);
+      setArea(() => () => res.area_label); // nome dell'area dal backend: non si traduce
       // la scansione vive in Copertura, ma i risultati si guardano in Hotel (elenco piatto dell'area)
       setViewMode("hotel");
       setHotelMode("flat");
@@ -894,7 +900,8 @@ kidotel.co`;
         const batch = await invoke<EnrichBatch>("enrich_batch", { limit: 24 });
         if (batch.processed === 0) break;
         evaluated += batch.processed;
-        setEnrichNote(`${t("enrich.scoring")}: ${evaluated.toLocaleString(lang)} ${t("enrich.evaluated")} · ${batch.remaining.toLocaleString(lang)} ${t("stars.remaining")}`);
+        const ev = evaluated, rem = batch.remaining;
+        setEnrichNote(() => (tr: (k: TKey) => string, lg: Lang) => `${tr("enrich.scoring")}: ${ev.toLocaleString(lg)} ${tr("enrich.evaluated")} · ${rem.toLocaleString(lg)} ${tr("stars.remaining")}`);
         const live: Record<string, EnrichResult> = {};
         for (const r of batch.results) {
           if (inView.has(r.id)) live[r.id] = { website_ok: r.website_ok, pages_fetched: r.pages_fetched, family_fit_score: r.family_fit_score, signals: r.signals };
@@ -963,7 +970,7 @@ kidotel.co`;
       lines.push([h.name, score ?? "", er ?? "", cStatus, c?.note ?? "", h.city ?? "", h.province ?? "", h.region ?? "", h.country ?? "", h.website ?? "", h.email ?? "", h.phone ?? "", h.lat, h.lon, services].map(String));
     }
     const csv = "﻿" + lines.map((r) => r.map(csvCell).join(sep)).join("\r\n");
-    const safe = (area || "hotels").replace(/[^a-z0-9]+/gi, "-").slice(0, 40);
+    const safe = (area ? area(t, lang) : "hotels").replace(/[^a-z0-9]+/gi, "-").slice(0, 40);
     try {
       const path = await save({ defaultPath: `kidotel-${safe}.csv`, filters: [{ name: "CSV", extensions: ["csv"] }] });
       if (path) await invoke("write_text_file", { path, content: csv });
@@ -1558,21 +1565,27 @@ kidotel.co`;
             );
           })()}
 
-          {area && <div className="area-caption">{area}</div>}
-          {/* Ticker «breaking news»: le scansioni in corso (copertura · stelle · valutazione) scorrono
-              insieme, ognuna coi suoi dati aggiornati. Se nessuna è in corso, resta il notice statico. */}
+          {area && <div className="area-caption">{area(t, lang)}</div>}
+          {/* Ticker «breaking news»: le scansioni in corso scorrono insieme, tradotte nella lingua
+              corrente (i messaggi sono funzioni (t,lang)→testo, non stringhe congelate). Se nessuna è
+              in corso, resta il notice statico. */}
           {(() => {
-            const live = [enrichNote, covNote, starsNote].filter((s): s is string => !!s);
+            const live = [enrichNote, covNote, starsNote].filter((m): m is LiveMsg => !!m).map((m) => m(t, lang));
             if (live.length === 0) {
               return notice ? <div className="notice" role="status" title={t("settings.close")} onClick={() => setNotice(null)}>{notice}</div> : null;
             }
+            // Riempi il nastro ripetendo le voci (≥4 istanze) così non resta spazio vuoto con poche/corte
+            // voci; due metà identiche + scorrimento di -50% = loop senza salti, da destra a sinistra.
+            const copies = Math.max(1, Math.ceil(4 / live.length));
+            const seg = Array.from({ length: copies }, () => live).flat();
+            const dur = Math.max(18, seg.length * 7); // velocità ~costante, stabile (niente reset a ogni dato)
             return (
               <div className="ticker" role="status" aria-live="polite">
-                <span className="ticker-live"><span className="ticker-dot" /> LIVE</span>
+                <span className="ticker-live"><span className="ticker-dot" /> {t("ticker.live")}</span>
                 <div className="ticker-mask">
-                  <div className="ticker-track">
-                    {[...live, ...live].map((s, i) => (
-                      <span className="ticker-item" key={i} aria-hidden={i >= live.length}><span className="ticker-sep">●</span>{s}</span>
+                  <div className="ticker-track" style={{ animationDuration: `${dur}s` }}>
+                    {[...seg, ...seg].map((s, i) => (
+                      <span className="ticker-item" key={i} aria-hidden={i >= seg.length}><span className="ticker-sep">●</span>{s}</span>
                     ))}
                   </div>
                 </div>
@@ -1708,7 +1721,7 @@ kidotel.co`;
                         <button className="bc-head" onClick={() => toggleCountry(c.country)} aria-expanded={open}>
                           <span className="bc-caret">{open ? "▾" : "▸"}</span>
                           <span className="bc-name">{c.country}</span>
-                          <span className="bc-meta">{c.total.toLocaleString(lang)} · <b>{c.strong.toLocaleString(lang)}</b> family</span>
+                          <span className="bc-meta">{c.total.toLocaleString(lang)} · <b>{c.strong.toLocaleString(lang)}</b> {t("browse.family")}</span>
                         </button>
                         {open && (
                           <div className="bc-body">
@@ -1740,7 +1753,7 @@ kidotel.co`;
           ) : (
             <>
               <div className="print-only print-head">
-                Kidotel Radar — {area} — {printDate} — {rows.length} hotel
+                Kidotel Radar — {area ? area(t, lang) : ""} — {printDate} — {rows.length} {t("print.hotels")}
               </div>
               <div className="table er-on">
                 {tableHead}

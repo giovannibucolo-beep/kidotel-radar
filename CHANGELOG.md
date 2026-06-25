@@ -2,6 +2,14 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.27] — 2026-06-25
+### Corretto — il ticker e la didascalia archivio ora si TRADUCONO; scorrimento più fluido
+- **Testo non tradotto** (ticker «Assegnazione stelle: … controllati …» e «Archivio salvato — pagina X/Y» restavano in italiano in un'app russa): erano **stringhe già tradotte salvate in stato**, congelate nella lingua di quando venivano create; cambiando lingua non si ri-traducevano. Ora avanzamenti delle scansioni e didascalia archivio sono **funzioni `(t, lang) → testo`** valutate al RENDER → si traducono **al volo**, anche a scansione in corso (es. IT «Assegnazione stelle… rimasti» → RU «Присвоение звёзд… осталось», numeri formattati nella lingua corrente). Tipo `LiveMsg`; `runCompleteCountry` prende un prefisso-funzione invece di una stringa pre-tradotta.
+- **Ticker più fluido, senza spazio vuoto**: con poche/corte voci le ripetiamo (≥4 istanze) per riempire il nastro → niente più grande vuoto; due metà identiche + scorrimento di -50% = loop continuo da destra a sinistra senza salti; durata stabile (non si resetta ad ogni aggiornamento dei dati).
+- **Audit completezza trilingue (tutto in IT/EN/RU)**: parità chiavi i18n verificata a tappeto (**275 × 3**, nessuna mancante) e Guida 13 sezioni + 28 «Novità» tutte tradotte. Caccia alle stringhe hardcoded (workflow multi-agente con verifica avversariale): corrette le 3 trovate — chip «LIVE» (RU «В ЭФИРЕ»), «hotel» nell'intestazione di stampa, «family» nella riga paese di «Sfoglia». Ora passano da `t()`.
+### Verificato
+- `tsc` pulito; parità i18n 275×3 OK; anteprima: ticker avviato in IT, **cambiando lingua a RU si è tradotto sul posto** mantenendo i numeri live; chip «LIVE»→«В ЭФИРЕ»; nastro riempito (1 voce → 4 ripetizioni) e scorrevole; «Ход оценивания 79 443 / 79 443 — 100%» coerente; 0 errori console.
+
 ## [0.8.26] — 2026-06-25
 ### Corretto — numeri coerenti + la scansione non si blocca più sull'Austria
 - **Avanzamento valutazione incoerente (>100%)**: mostrava «valutati / con-sito» (es. 79.443 / 79.416, numeratore > denominatore!). Causa: l'upsert al ri-scan faceva `website = excluded.website`, **azzerando il sito** di un hotel già valutato quando OSM non lo riportava più → restavano hotel con voto ma senza sito (scored > with_site). **Doppia correzione**: (a) l'upsert ora **preserva** l'ultimo sito/telefono conosciuto (`COALESCE(NULLIF(excluded.website,''), hotels.website)`), così non si perde più il sito; (b) l'avanzamento ora è **valutati / (valutati + in-coda)** — denominatore = già valutati + ancora da valutare (sito presente, voto mancante): non supera mai il 100%. Nuovo campo `to_score` in `score_stats`.
