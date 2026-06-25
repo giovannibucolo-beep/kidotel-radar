@@ -172,14 +172,22 @@ footer{border-top:1px solid var(--line); padding-block:44px; color:var(--mut); f
 footer .wrap{display:flex; flex-wrap:wrap; gap:14px 28px; align-items:center; justify-content:space-between}
 footer .pr{max-width:60ch}
 
-/* ---------- reveal allo scroll ---------- */
-.rv{opacity:0; transform:translateY(16px); transition:opacity .7s ease, transform .7s ease}
-.rv.in{opacity:1; transform:none}
-@media (prefers-reduced-motion:reduce){ .rv{opacity:1; transform:none; transition:none} .fill{transition:none} }
+/* ---------- reveal allo scroll ----------
+   IMPORTANTE: il contenuto è VISIBILE di default. L'effetto "appari allo scroll" (che parte da
+   opacity:0) si attiva SOLO quando il JavaScript è attivo — cioè quando <html> riceve la classe .js.
+   Così, in qualsiasi visualizzatore che NON esegue il JS (anteprima email, pannelli sandbox, Quick
+   Look, JS disattivato), la pagina resta piena e leggibile invece di apparire vuota. */
+.js .rv{opacity:0; transform:translateY(16px); transition:opacity .7s ease, transform .7s ease}
+.js .rv.in{opacity:1; transform:none}
+@media (prefers-reduced-motion:reduce){ .js .rv{opacity:1; transform:none; transition:none} .fill{transition:none} }
 
 .skip{position:absolute; left:-9999px; top:auto; background:var(--ink); color:var(--bg); padding:10px 16px; border-radius:8px; z-index:100}
 .skip:focus{left:12px; top:10px}
 </style>
+<!-- Attiva l'effetto reveal SOLO se il JS gira (aggiunge .js a <html> prima del primo paint → niente
+     flash). Se questo script non viene eseguito (JS off / anteprima sandbox), .js non c'è e il
+     contenuto resta visibile: la pagina non è mai vuota. -->
+<script>document.documentElement.className += " js";</script>
 </head>
 <body>
 
