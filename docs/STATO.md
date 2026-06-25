@@ -2,8 +2,12 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.22` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.23` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-25
+
+## Fatto v0.8.23 (2026-06-25) — manuale in-app con screenshot auto-aggiornati
+- Guida con SCREENSHOT reali sotto le sezioni (Hotel/Copertura/CRM/Infografica), nella lingua dell'app (IT/EN/RU). `scripts/capture-manual.mjs` (Playwright + mock invoke Tauri, niente backend/dati reali) → `public/manual/<vista>.<lingua>.png` (12 PNG, scale 1.5). `release.mjs` li rigenera PRIMA del build → manuale sempre allo stato dell'arte. Guida: campo `shot?` + `<img>` lazy con fallback; CSS `.guide-shot`. `playwright` devDep.
+- Verificato: 12 PNG generati, anteprima Guida mostra lo screenshot Hotel sotto la sezione, immagini 200 IT/EN/RU, 0 errori; tsc pulito. Le 4 richieste dell'utente (exe-ogni-dmg, aggiungi paesi, scansione a ripresa, manuale con screenshot) COMPLETE.
 
 ## Fatto v0.8.22 (2026-06-25) — aggiungi paesi (mondo) + scansione a ripresa
 - **WORLD_COUNTRIES** (~190 paesi, nome+continente, alias query Nominatim): selettore «Aggiungi e scansiona» con ricerca in Copertura → scansiona QUALSIASI paese, anche nuovo. CONTINENT derivato dalla lista + alias (no più «(altro)»). `nominatimQuery()` per i nomi pycountry difficili; il timbro resta canonico.

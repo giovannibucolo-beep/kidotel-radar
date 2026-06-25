@@ -137,6 +137,16 @@ console.log(`\n=== Release ${PRODUCT} v${version} ===\n`);
 // bundle_dmg.sh (hdiutil) ogni tanto fallisce e LASCIA un'immagine montata orfana, facendo fallire
 // anche il tentativo successivo finché non la si stacca. Quindi: stacca → build; se fallisce, stacca
 // di nuovo (anche l'orfana appena creata) e riprova UNA volta.
+// MANUALE: rigenera gli screenshot della Guida (public/manual/) PRIMA del build, così il manuale
+// in-app riflette sempre l'interfaccia di QUESTA versione. Best-effort: se Playwright non c'è o la
+// cattura fallisce, si prosegue con gli screenshot esistenti (non blocca il rilascio).
+try {
+  console.log("\n=== aggiorno gli screenshot del manuale (Guida) ===");
+  run("node", ["scripts/capture-manual.mjs"]);
+} catch (e) {
+  console.log(`screenshot manuale non aggiornati (${String(e.message).split("\n")[0]}). Uso quelli esistenti.`);
+}
+
 detachOrphanDmgMounts();
 try {
   run("pnpm", ["tauri", "build"]);

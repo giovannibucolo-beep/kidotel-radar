@@ -2,6 +2,15 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.23] — 2026-06-25
+### Aggiunto — Manuale in-app con SCREENSHOT auto-aggiornati ad ogni release
+- La Guida integrata ora mostra, sotto le sezioni principali (Hotel, Copertura, CRM, Infografica), uno **screenshot reale dell'interfaccia** nella lingua dell'app (IT/EN/RU).
+- **`scripts/capture-manual.mjs`** (Playwright): avvia il dev server, carica l'app in un browser headless con **dati finti** (mock dell'invoke Tauri → niente backend, niente dati reali/email: manuale pulito e riproducibile), naviga ogni vista e salva i PNG in `public/manual/<vista>.<lingua>.png` (12 immagini: 4 viste × 3 lingue).
+- **Integrato nel rilascio**: `release.mjs` rigenera gli screenshot **prima** del build → il manuale riflette sempre l'interfaccia di QUESTA versione («sempre allo stato dell'arte»). Best-effort: se la cattura fallisce, si usano gli ultimi disponibili senza bloccare il rilascio.
+- Guida: campo `shot?` sulle sezioni; `<img>` con la lingua corrente, lazy + fallback che nasconde l'immagine se manca. CSS `.guide-shot`. `playwright` aggiunto come devDependency.
+### Verificato
+- `tsc` pulito; cattura eseguita: **12 PNG** generati; anteprima: la Guida mostra lo screenshot della vista Hotel (badge ★/€/family-fit) sotto la sezione, immagini servite 200 in IT/EN/RU, lazy-load + fallback ok, 0 errori console.
+
 ## [0.8.22] — 2026-06-25
 ### Aggiunto — copertura del mondo: aggiungi paesi + scansione a RIPRESA
 - **Aggiungi paese (con ricerca)**: in «Copertura», un selettore con ricerca su **~190 paesi del mondo** (lista canonica `WORLD_COUNTRIES`, nome + continente, con alias di query Nominatim per i nomi «difficili» tipo *Russian Federation → Russia*). Si può scegliere e scansionare anche **paesi non ancora in archivio** — non più solo quelli già scoperti. I nuovi paesi si raggruppano nel continente giusto (niente più «(altro)»).

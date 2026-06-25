@@ -2258,6 +2258,16 @@ function GuideOverlay({ lang, t, onClose }: { lang: Lang; t: (k: TKey) => string
             <div className="guide-sec" key={i}>
               <div className="guide-sec-h"><Icon name={s.icon} size={16} /> {(s[lang] ?? s.en).t}</div>
               <p>{(s[lang] ?? s.en).b}</p>
+              {/* screenshot aggiornato ad ogni release (scripts/capture-manual.mjs). Se manca, si nasconde. */}
+              {s.shot ? (
+                <img
+                  className="guide-shot"
+                  src={`/manual/${s.shot}.${lang}.png`}
+                  alt={(s[lang] ?? s.en).t}
+                  loading="lazy"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                />
+              ) : null}
             </div>
           ))}
           <div className="guide-foot"><Icon name="check" size={15} /> {t("footer.proof")} · {t("footer.copyright")}</div>

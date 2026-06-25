@@ -4,6 +4,7 @@
 type Loc = { t: string; b: string };
 export type GuideSection = {
   icon: string; // nome icona Heroicon (vedi components/Icon.tsx)
+  shot?: string; // base del nome screenshot in public/manual/<shot>.<lang>.png (auto, scripts/capture-manual.mjs)
   it: Loc;
   en: Loc;
   ru?: Loc; // russo opzionale: finché manca, l'app ripiega sull'inglese
@@ -12,6 +13,7 @@ export type GuideSection = {
 export const GUIDE: GuideSection[] = [
   {
     icon: "list",
+    shot: "hotels",
     it: { t: "Hotel — sfoglia e cerca", b: "La vista «Hotel» mostra l'archivio. «Per paese»: apri un paese (es. Austria) e vedi i suoi hotel, caricati su richiesta dall'intero database. «Elenco»: lista piatta ordinata per voto o valore atteso, con ricerca per nome/città/regione. Il colore del voto è una scala continua: più caldo = più adatto alle famiglie. «Valuta family-fit» avvia la valutazione di tutti i non valutati." },
     en: { t: "Hotels — browse and search", b: "The «Hotels» view shows the archive. «By country»: open a country (e.g. Austria) to see its hotels, loaded on demand from the whole database. «List»: a flat list sorted by score or expected value, with name/city/region search. The score color is a continuous scale: warmer = more family-friendly. «Score family-fit» runs scoring on everything unscored." },
     ru: { t: "Отели — просмотр и поиск", b: "Вид «Отели» показывает архив. «По странам»: откройте страну (например, Австрию) и увидите её отели, загружаемые по запросу из всей базы данных. «Список»: плоский перечень, отсортированный по оценке или ожидаемой ценности, с поиском по названию, городу или региону. Цвет оценки — это непрерывная шкала: чем теплее, тем больше отель подходит для семей. Кнопка «Оценить family-fit» запускает оценку всех неоценённых отелей." },
@@ -48,12 +50,14 @@ export const GUIDE: GuideSection[] = [
   },
   {
     icon: "pin",
+    shot: "coverage",
     it: { t: "Copertura per paese", b: "Mostra, per ogni paese, quanti hotel hai (Trovati), quanti valutati e quanti family (≥ soglia). «Misura» calcola quanti hotel con nome esistono davvero su OpenStreetMap → il GRADO di copertura reale. «Completa 100%» scansiona il paese regione per regione per riempirlo (anche USA/Francia); puoi fermarlo con «Ferma». «Aggiungi e scansiona»: scegli un PAESE da una lista con ricerca (~190, tutto il mondo) — anche non ancora in archivio — e lo scansioni. «Completa tutti i continenti» copre tutti i paesi del mondo e RIPRENDE dal punto in cui si era fermato («riprende da: …», con «ricomincia da capo»), così a furia di lanciarlo copri tutto." },
     en: { t: "Coverage by country", b: "Shows, per country, how many hotels you have (Found), how many scored and how many family (≥ threshold). “Measure” computes how many named hotels actually exist on OpenStreetMap → the real coverage GRADE. “Complete 100%” scans the country region by region to fill it (even US/France); you can stop it with “Stop”. “Add and scan”: pick a COUNTRY from a searchable list (~190, the whole world) — even one not yet in the archive — and scan it. “Complete all continents” covers every country in the world and RESUMES where it stopped (“resumes from: …”, with “start over”), so by running it repeatedly you cover everything." },
     ru: { t: "Покрытие по странам", b: "Показывает для каждой страны, сколько у вас отелей (Найдено), сколько оценено и сколько семейных (≥ порога). «Измерить» вычисляет, сколько отелей с названием реально существует в OpenStreetMap → СТЕПЕНЬ фактического покрытия. «Завершить 100%» сканирует страну регион за регионом (в том числе США/Франция); остановить можно кнопкой «Остановить». «Добавить и сканировать»: выберите СТРАНУ из списка с поиском (~190, весь мир) — даже которой ещё нет в архиве — и сканируйте её. «Завершить все континенты» охватывает все страны мира и ПРОДОЛЖАЕТ с того места, где остановилось («продолжит с: …», с «начать заново»)." },
   },
   {
     icon: "list",
+    shot: "crm",
     it: { t: "CRM · acquisizione partner", b: "Gli hotel contattabili ordinati per VALORE ATTESO, con stato del contatto (da contattare → contattato → ha risposto → in trattativa → partner / rifiutato) e nota. «Scrivi email» genera un'email professionale in inglese, personalizzata con le prove dal sito. L'email è colorata per RECAPITABILITÀ (verde = valida, barrata = non recapitabile): non scrive verso indirizzi che rimbalzerebbero. Stato e note restano nel database e sopravvivono a scansioni e backup." },
     en: { t: "CRM · partner acquisition", b: "Contactable hotels ranked by EXPECTED VALUE, with contact status (to contact → contacted → replied → negotiating → partner / declined) and a note. “Write email” generates a professional English email, personalized with the proof from the site. The email is colored by DELIVERABILITY (green = valid, struck-through = undeliverable): it won't write to addresses that would bounce. Status and notes live in the database and survive scans and backups." },
     ru: { t: "CRM · привлечение партнёров", b: "Отели, которым можно написать, отсортированы по ОЖИДАЕМОЙ ЦЕННОСТИ, с указанием статуса контакта (нужно связаться → связались → ответили → в переговорах → партнёр / отказ) и заметкой. Кнопка «Написать email» создаёт профессиональное письмо на английском, персонализированное с использованием доказательств с сайта. Письмо окрашивается по ДОСТАВЛЯЕМОСТИ (зелёный = действительный, зачёркнутый = недоставляемый): на адреса, которые вернули бы письмо, отправка не выполняется. Статус и заметки хранятся в базе данных и сохраняются после сканирований и резервных копий." },
@@ -66,6 +70,7 @@ export const GUIDE: GuideSection[] = [
   },
   {
     icon: "chart",
+    shot: "infographic",
     it: { t: "Infografica stampabile", b: "Genera un cruscotto visivo dai tuoi dati reali: numeri chiave (hotel, valutati, family, contattabili), distribuzione dei punteggi, top paesi per family hotel, copertura per continente, funnel di acquisizione (CRM) e valore atteso totale. Scegli orientamento e quali sezioni includere; «Stampa» la apre nel browser di sistema, dove hai tutte le opzioni (PDF, A4/Lettera, margini). Nessun dato inventato." },
     en: { t: "Printable infographic", b: "Generate a visual dashboard from your real data: key figures (hotels, scored, family, contactable), score distribution, top countries by family hotel, coverage by continent, acquisition funnel (CRM) and total expected value. Choose orientation and which sections to include; “Print” opens it in the system browser, with every option (PDF, A4/Letter, margins). Nothing invented." },
     ru: { t: "Печатная инфографика", b: "Создайте визуальную панель на основе ваших реальных данных: ключевые показатели (отели, оценённые, семейные, доступные для контакта), распределение баллов, лучшие страны по семейным отелям, покрытие по континентам, воронку привлечения (CRM) и общую ожидаемую ценность. Выберите ориентацию и разделы для включения; кнопка «Печать» открывает инфографику в системном браузере, где доступны все опции (PDF, A4/Letter, поля). Никаких вымышленных данных." },
