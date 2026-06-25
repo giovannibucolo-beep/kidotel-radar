@@ -325,7 +325,7 @@ function resumeIndex(cursor: string): number {
 const EN_SIGNAL: Record<string, string> = {
   kids_club: "Kids club", kids_facilities: "Kids facilities", family_rooms: "Family rooms",
   childcare: "Childcare / babysitting", kids_dining: "Kids dining",
-  activities_age: "Age-appropriate activities", safety: "Child safety",
+  activities_age: "Age-appropriate activities", safety: "Child safety", adults_only: "Adults only",
 };
 
 // Pesi canonici dei segnali ATTIVI (da src-tauri/src/signals.json; 'reviews' è riservato/futuro → escluso).

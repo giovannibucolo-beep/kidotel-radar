@@ -2,8 +2,14 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.36` (installata su macOS) + connettore MCP `kidotel-mcp`
-- **Aggiornato:** 2026-06-25
+- **Versione:** `0.8.37` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Aggiornato:** 2026-06-26
+
+## Fatto v0.8.37 (2026-06-26) — credibilità punteggio: esclusioni + gate solo-adulti (qualità #3)
+- `score_pages`: scarta una frase-segnale se contiene un'esclusione (27 pattern, 6 lingue) → niente più «adults only, no kids club» che accende kids_club. Gate «solo adulti» (26 pattern, verbatim) → family-fit azzerato + flag `adults_only` con prova; segnali family forzati assenti. `SignalsFile`+`signals_cfg()`, i18n `signal.adults_only`.
+- Mossa #3 del piano di massimizzazione valore (dalla valutazione strategica): chiude il falso positivo più grave per certificati/report/analytics.
+- Verificato: cargo 15 test (2 nuovi) + live no-regressione (schwarzenstein 76); tsc, parità 339×3, signals.json valido (8+27+26), 0 NUL.
+- **Prossimo (dal piano)**: #4 leggere i tag OSM già scaricati (wheelchair/piscina/catena/orari); poi freschezza datata, scheduler, nuovi segnali. Vie operative (tue): affiliazione, Certified ricorrente.
 
 ## Fatto v0.8.36 (2026-06-25) — Family-Fit as a Service (valuta un sito su richiesta, no DB)
 - Menu Dati → «Valuta un hotel su richiesta»: incolli un sito, Radar applica lo stesso scoring e restituisce punteggio + prova citata + risposta API (JSON). Non tocca il DB Kidotel (solo il sito fornito). Rust `score_website` (riusa gather_pages+score_pages, no DB) registrato; frontend `FtoolOverlay`+`runFtool`. Implementa la via «family-fit as a service».

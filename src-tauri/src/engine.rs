@@ -853,19 +853,25 @@ struct SignalSpec {
 #[derive(serde::Deserialize)]
 struct SignalsFile {
     signals: Vec<SignalSpec>,
+    // Frasi di ESCLUSIONE (minuscolo): se una frase che matcha un segnale contiene anche una di queste,
+    // la frase è scartata (es. "adults only, no kids club" non deve far scattare kids_club).
+    #[serde(default)]
+    exclude_patterns: Vec<String>,
+    // Se il sito dichiara l'hotel SOLO ADULTI, non è family → family-fit azzerato e flag adults_only.
+    #[serde(default)]
+    adults_only_patterns: Vec<String>,
 }
 
 static SIGNALS_JSON: &str = include_str!("signals.json");
 
-fn signal_defs() -> &'static [SignalSpec] {
+fn signals_cfg() -> &'static SignalsFile {
     use std::sync::OnceLock;
-    static CELL: OnceLock<Vec<SignalSpec>> = OnceLock::new();
-    CELL.get_or_init(|| {
-        let parsed: SignalsFile =
-            serde_json::from_str(SIGNALS_JSON).expect("signals.json non valido");
-        parsed.signals
-    })
-    .as_slice()
+    static CELL: OnceLock<SignalsFile> = OnceLock::new();
+    CELL.get_or_init(|| serde_json::from_str(SIGNALS_JSON).expect("signals.json non valido"))
+}
+
+fn signal_defs() -> &'static [SignalSpec] {
+    signals_cfg().signals.as_slice()
 }
 
 #[derive(Serialize, Clone)]
@@ -1008,20 +1014,47 @@ fn verify_verbatim(sentence: &str, pages: &[(String, String)]) -> bool {
 
 // Calcola il punteggio family-fit dalle pagine, con prova citata e verificata.
 pub fn score_pages(pages: &[(String, String)]) -> (u32, Vec<SignalResult>) {
+    let cfg = signals_cfg();
     let mut tagged: Vec<(String, String)> = Vec::new(); // (frase, url)
     for (url, text) in pages {
         for s in split_sentences(text) {
             tagged.push((s, url.clone()));
         }
     }
+    // GATE solo-adulti: se il sito dichiara l'hotel "adults only", NON è family → punteggio 0, tutti i
+    // segnali assenti + un segnale `adults_only` con la prova (così il motivo è visibile e onesto).
+    if !cfg.adults_only_patterns.is_empty() {
+        for (sent, url) in &tagged {
+            let sl = sent.to_lowercase();
+            if cfg.adults_only_patterns.iter().any(|p| sl.contains(p.as_str())) && verify_verbatim(sent, pages) {
+                let mut signals: Vec<SignalResult> = cfg
+                    .signals
+                    .iter()
+                    .map(|d| SignalResult { key: d.key.clone(), weight: d.weight, present: false, quote: None, url: None })
+                    .collect();
+                signals.push(SignalResult {
+                    key: "adults_only".to_string(),
+                    weight: 0,
+                    present: true,
+                    quote: Some(cap(sent, 220)),
+                    url: Some(url.clone()),
+                });
+                return (0, signals);
+            }
+        }
+    }
     let mut signals = Vec::new();
     let mut score = 0u32;
-    for def in signal_defs() {
+    for def in &cfg.signals {
         let mut found: Option<(String, String)> = None;
         if !def.patterns.is_empty() {
             for (sent, url) in &tagged {
                 let sl = sent.to_lowercase();
-                if def.patterns.iter().any(|p| sl.contains(p.as_str())) && verify_verbatim(sent, pages) {
+                // match positivo, MA scarta la frase se contiene un'esclusione (no kids / adults only / …)
+                if def.patterns.iter().any(|p| sl.contains(p.as_str()))
+                    && !cfg.exclude_patterns.iter().any(|x| sl.contains(x.as_str()))
+                    && verify_verbatim(sent, pages)
+                {
                     found = Some((cap(sent, 220), url.clone()));
                     break;
                 }
@@ -1842,6 +1875,40 @@ mod tests {
         let (score, signals) = score_pages(&pages);
         assert_eq!(score, 0);
         assert!(signals.iter().all(|s| !s.present));
+    }
+
+    #[test]
+    fn adults_only_gates_family_fit_to_zero() {
+        // Un hotel che si dichiara solo-adulti NON deve risultare family, anche se nomina un "kids club".
+        let html = r#"<html><body>
+            <p>We are an adults only hotel, perfect for a quiet romantic getaway.</p>
+            <p>We have a wonderful kids club open every day.</p>
+        </body></html>"#;
+        let pages = vec![("https://x.example".to_string(), html_to_text(html))];
+        let (score, signals) = score_pages(&pages);
+        assert_eq!(score, 0, "un hotel solo-adulti deve avere family-fit 0");
+        assert!(
+            signals.iter().any(|s| s.key == "adults_only" && s.present && s.quote.is_some()),
+            "manca il segnale adults_only con prova"
+        );
+        assert!(
+            !signals.iter().any(|s| s.key == "kids_club" && s.present),
+            "kids_club non deve risultare presente in un hotel solo-adulti"
+        );
+    }
+
+    #[test]
+    fn exclusion_voids_negated_signal_but_keeps_others() {
+        // "no kids club" non deve far scattare kids_club; un segnale legittimo in ALTRA frase resta.
+        let html = r#"<html><body>
+            <p>Unfortunately we have no kids club here at the moment.</p>
+            <p>Disponiamo di una piscina per bambini riscaldata.</p>
+        </body></html>"#;
+        let pages = vec![("https://y.example".to_string(), html_to_text(html))];
+        let (_score, signals) = score_pages(&pages);
+        let get = |k: &str| signals.iter().find(|s| s.key == k).unwrap();
+        assert!(!get("kids_club").present, "kids_club non deve scattare con 'no kids club'");
+        assert!(get("kids_facilities").present, "la piscina per bambini (altra frase) deve restare");
     }
 
     // Test LIVE (rete reale). Eseguire a mano: `cargo test -- --ignored live_discover_small_area`

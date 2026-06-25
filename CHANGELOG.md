@@ -2,6 +2,14 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.37] — 2026-06-26
+### Corretto — credibilità del punteggio: esclusioni + gate «solo adulti» (qualità #3)
+- **Frasi di esclusione**: `score_pages` ora scarta una frase che matcha un segnale se la stessa frase contiene un'**esclusione** (es. «adults only», «no kids», «vietato ai bambini», 27 pattern in 6 lingue). Chiude il falso positivo per cui «we are an adults only hotel, no kids club» faceva scattare `kids_club` per pura presenza della stringa.
+- **Gate «solo adulti»**: se il sito dichiara l'hotel adults-only/child-free/couples only (26 pattern multilingua, verificati verbatim), il family-fit è **azzerato** e nel breakdown compare un segnale `adults_only` (peso 0, presente) con la **prova citata** e i segnali family forzati assenti → coerente e onesto in certificato/analytics/feed.
+- Refactor: `SignalsFile` con `exclude_patterns`/`adults_only_patterns` (serde default), unico loader `signals_cfg()`. i18n `signal.adults_only` it/en/ru, `EN_SIGNAL` aggiornato. È la mossa #3 del piano di massimizzazione del valore (la più alta credibilità per tutto ciò che si vende).
+### Verificato
+- `cargo test`: **15 passati** (2 nuovi: `adults_only_gates_family_fit_to_zero`, `exclusion_voids_negated_signal_but_keeps_others`); **regressione live** su family hotel reale (schwarzenstein.com) → **ancora 76, 5 segnali** (l'esclusione non tocca lo scoring normale). `tsc` pulito; parità i18n **339×3**; signals.json valido (8 segnali + 27 exclude + 26 adults_only); 0 NUL.
+
 ## [0.8.36] — 2026-06-25
 ### Aggiunto — «Family-Fit as a Service»: valuta un sito su richiesta, senza toccare il DB
 - Nuovo strumento (menu **Dati → «Valuta un hotel su richiesta»**): incolli il **sito di un hotel** e Radar applica lo **stesso motore di scoring** dell'archivio, restituendo punteggio + segnali con **prova citata** e la **risposta in formato API (JSON)**. **Non legge né scrive il DB Kidotel**: scarica solo il sito fornito → la metodologia è il prodotto, il dato resta del cliente. Implementa la via «family-fit as a service» del piano di uso economico.
