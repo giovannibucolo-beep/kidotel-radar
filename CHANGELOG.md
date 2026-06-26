@@ -2,6 +2,13 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.38] — 2026-06-26
+### Aggiunto — cattura i tag OSM già scaricati (dato a costo zero, #4)
+- La query Overpass è già `out center tags;` → ogni risposta contiene decine di tag che finora **buttavamo** in `parse_elements`. Ora ne salviamo un set **curato** in una nuova colonna `osm_attrs` (JSON): `wheelchair` (accessibilità), `internet_access` (wifi), `swimming_pool`, `brand`/`operator` (catena), `opening_hours`/`seasonal` (stagionalità), `smoking`, `rooms`/`beds`, `breakfast`, indirizzo completo (`addr:street/housenumber/postcode/state/province`). **Zero richieste di rete in più**: è dato reale OSM già in casa.
+- `Hotel.osm_attrs` (engine.rs), colonna `osm_attrs TEXT` (migrazione), `upsert_hotels` con `osm_attrs = COALESCE(excluded, hotels)` (non azzera i tag già noti al ri-scan). Si popola alle prossime scansioni; foundation per nuove dimensioni del Report di mercato (es. % accessibili per regione) e per irrobustire l'esclusione catene. È la mossa #4 del piano di massimizzazione del valore.
+### Verificato
+- `cargo test`: **17 passati** (2 nuovi: `parse_elements_captures_useful_osm_tags`, `parse_elements_no_useful_tags_is_none`); il JSON include solo i tag presenti (niente chiavi vuote); `tsc` pulito; 0 NUL. Nota: i ~165k hotel esistenti acquisiscono `osm_attrs` solo quando ri-scansionati.
+
 ## [0.8.37] — 2026-06-26
 ### Corretto — credibilità del punteggio: esclusioni + gate «solo adulti» (qualità #3)
 - **Frasi di esclusione**: `score_pages` ora scarta una frase che matcha un segnale se la stessa frase contiene un'**esclusione** (es. «adults only», «no kids», «vietato ai bambini», 27 pattern in 6 lingue). Chiude il falso positivo per cui «we are an adults only hotel, no kids club» faceva scattare `kids_club` per pura presenza della stringa.

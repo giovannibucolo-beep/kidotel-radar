@@ -2,8 +2,13 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.37` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.38` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-26
+
+## Fatto v0.8.38 (2026-06-26) — cattura i tag OSM già scaricati (dato a costo zero, #4)
+- `parse_elements` ora salva un set curato di tag OSM (wheelchair, internet_access, swimming_pool, brand/operator, opening_hours/seasonal, smoking, rooms/beds, breakfast, addr completo) in `osm_attrs` (JSON). Colonna `osm_attrs TEXT` (migrazione), upsert con COALESCE (non azzera al ri-scan). Zero richieste rete in più. Foundation per dimensioni report (% accessibili/regione) + esclusione catene. Mossa #4 del piano valore.
+- Verificato: cargo 17 test (2 nuovi su osm_attrs), tsc, 0 NUL. Nota: i 165k esistenti si arricchiscono solo a ri-scansione.
+- **Vie #3 e #4 del piano fatte** (esclusioni/adults-only + tag OSM). **Prossimo (Prossimo orizzonte)**: freschezza datata, scheduler interno, nuove famiglie di segnali. **Operativo (tuo)**: affiliazione (aid in affiliate.config.json), Certified ricorrente.
 
 ## Fatto v0.8.37 (2026-06-26) — credibilità punteggio: esclusioni + gate solo-adulti (qualità #3)
 - `score_pages`: scarta una frase-segnale se contiene un'esclusione (27 pattern, 6 lingue) → niente più «adults only, no kids club» che accende kids_club. Gate «solo adulti» (26 pattern, verbatim) → family-fit azzerato + flag `adults_only` con prova; segnali family forzati assenti. `SignalsFile`+`signals_cfg()`, i18n `signal.adults_only`.

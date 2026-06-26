@@ -76,6 +76,7 @@ fn migrate(conn: &Connection) {
         "price_tier INTEGER",    // fascia di costo REALE dal sito (schema.org priceRange) 1–5 ($→$$$$$)
         "price_eur INTEGER",     // prezzo a notte (≈ EUR) quando il sito pubblica una fascia numerica
         "price_src TEXT",        // prova: il valore priceRange citato verbatim dal sito
+        "osm_attrs TEXT",        // JSON dei tag OSM utili già scaricati (wheelchair, brand/operator, piscina, orari, indirizzo)
     ] {
         let _ = conn.execute(&format!("ALTER TABLE hotels ADD COLUMN {col}"), []);
     }
@@ -264,8 +265,8 @@ pub fn upsert_hotels(conn: &Connection, hotels: &[Hotel]) -> Result<(), String> 
     // NB: i campi CRM (contact_*) e la valutazione NON vengono toccati al ri-scan: si preservano.
     // email: si aggiorna solo se la nuova non è vuota (non cancella un contatto già trovato).
     let sql = "INSERT INTO hotels
-        (osm_type, osm_id, name, city, country, website, phone, email, lat, lon, source, stars, luxury, updated_at)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, datetime('now'))
+        (osm_type, osm_id, name, city, country, website, phone, email, lat, lon, source, stars, luxury, osm_attrs, updated_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, datetime('now'))
         ON CONFLICT(osm_type, osm_id) DO UPDATE SET
             name = excluded.name,
             -- city/country/region/province NON si toccano: la geo precisa la mette il
@@ -286,6 +287,8 @@ pub fn upsert_hotels(conn: &Connection, hotels: &[Hotel]) -> Result<(), String> 
             -- stelle: riempi se OSM ora ce le ha, ma non azzerare quelle già note.
             stars = COALESCE(excluded.stars, hotels.stars),
             luxury = COALESCE(excluded.luxury, hotels.luxury),
+            -- tag OSM: aggiorna se la nuova scansione ne porta, ma non azzerare quelli già noti.
+            osm_attrs = COALESCE(excluded.osm_attrs, hotels.osm_attrs),
             updated_at = datetime('now')";
     for h in hotels {
         let luxury: Option<i64> = if h.stars.is_some() { Some(if h.luxury { 1 } else { 0 }) } else { None };
@@ -293,7 +296,7 @@ pub fn upsert_hotels(conn: &Connection, hotels: &[Hotel]) -> Result<(), String> 
             sql,
             params![
                 h.osm_type, h.osm_id, h.name, h.city, h.country, h.website, h.phone, h.email,
-                h.lat, h.lon, h.source, h.stars, luxury
+                h.lat, h.lon, h.source, h.stars, luxury, h.osm_attrs
             ],
         )
         .map_err(|e| e.to_string())?;

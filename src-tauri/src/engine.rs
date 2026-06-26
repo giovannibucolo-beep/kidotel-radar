@@ -24,6 +24,9 @@ pub struct Hotel {
     pub lon: f64,
     pub stars: Option<i64>, // classificazione internazionale 1–5 (dal tag OSM `stars`, dove c'è)
     pub luxury: bool,       // "lusso" = 5 stelle Superior (o tag luxury=yes)
+    // Tag OSM utili (JSON) che Overpass restituisce GIÀ (`out ... tags`) e finora buttavamo: accessibilità,
+    // wifi, piscina, catena (brand/operator), orari, indirizzo. Dato OSM (ODbL), per uso interno/aggregati.
+    pub osm_attrs: Option<String>,
 }
 
 // Interpreta il tag OSM `stars`: "1".."5", con eventuale "S"/"Superior" (classificazione tedesca,
@@ -375,6 +378,23 @@ fn parse_elements(elements: Vec<Value>) -> Vec<Hotel> {
         let country = get("addr:country");
         let luxury_tag = get("luxury").map(|v| v == "yes" || v == "1").unwrap_or(false);
         let (stars, luxury) = parse_stars(get("stars").as_deref(), luxury_tag);
+        // Tag OSM utili già in casa (out ... tags) finora ignorati: li salviamo grezzi come JSON.
+        let osm_attrs = {
+            let mut m = serde_json::Map::new();
+            for k in [
+                "wheelchair", "internet_access", "swimming_pool", "brand", "operator",
+                "opening_hours", "seasonal", "smoking", "rooms", "beds", "breakfast",
+                "addr:street", "addr:housenumber", "addr:postcode", "addr:state", "addr:province",
+            ] {
+                if let Some(v) = get(k) {
+                    let v = v.trim();
+                    if !v.is_empty() {
+                        m.insert(k.to_string(), Value::String(v.to_string()));
+                    }
+                }
+            }
+            if m.is_empty() { None } else { Some(Value::Object(m).to_string()) }
+        };
         let otype = el.get("type").and_then(|x| x.as_str()).unwrap_or("node").to_string();
         let oid = el.get("id").and_then(|x| x.as_i64()).unwrap_or(0);
         let (lat, lon) = if let (Some(la), Some(lo)) = (
@@ -404,6 +424,7 @@ fn parse_elements(elements: Vec<Value>) -> Vec<Hotel> {
             lon,
             stars,
             luxury,
+            osm_attrs,
         });
     }
     hotels.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
@@ -1750,6 +1771,40 @@ mod tests {
             assert!(r.website_ok, "sito raggiungibile");
             assert!(r.family_fit_score > 0, "un family hotel reale deve avere punteggio > 0");
         });
+    }
+
+    #[test]
+    fn parse_elements_captures_useful_osm_tags() {
+        // I tag utili che Overpass restituisce già (out ... tags) devono finire in osm_attrs (JSON), non buttati.
+        let elements = vec![serde_json::json!({
+            "type": "node", "id": 42, "lat": 46.5, "lon": 11.3,
+            "tags": {
+                "name": "Hotel Test", "tourism": "hotel",
+                "wheelchair": "yes", "internet_access": "wlan",
+                "brand": "Familienhotels", "operator": "X GmbH",
+                "swimming_pool": "yes", "opening_hours": "Mar-Oct",
+                "addr:street": "Via Roma", "addr:postcode": "39010"
+            }
+        })];
+        let hotels = parse_elements(elements);
+        assert_eq!(hotels.len(), 1);
+        let a = hotels[0].osm_attrs.as_ref().expect("osm_attrs mancante");
+        let v: serde_json::Value = serde_json::from_str(a).unwrap();
+        assert_eq!(v["wheelchair"], "yes");
+        assert_eq!(v["brand"], "Familienhotels");
+        assert_eq!(v["swimming_pool"], "yes");
+        assert_eq!(v["addr:postcode"], "39010");
+        assert!(v.get("smoking").is_none(), "non deve includere tag assenti");
+    }
+
+    #[test]
+    fn parse_elements_no_useful_tags_is_none() {
+        let elements = vec![serde_json::json!({
+            "type": "node", "id": 7, "lat": 1.0, "lon": 2.0,
+            "tags": { "name": "Spartano", "tourism": "hotel" }
+        })];
+        let hotels = parse_elements(elements);
+        assert!(hotels[0].osm_attrs.is_none(), "senza tag utili osm_attrs deve essere None");
     }
 
     #[test]
