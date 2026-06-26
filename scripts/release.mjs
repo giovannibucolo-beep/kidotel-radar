@@ -198,7 +198,13 @@ try {
   console.log(`\nWindows/CI: passo saltato (${String(e.message).split("\n")[0]}). Il rilascio macOS è completo.`);
 }
 
-console.log("\n=== apro l'app ===");
+console.log("\n=== chiudo la vecchia istanza e apro la nuova ===");
+// `open` da solo ri-focalizza l'istanza GIÀ in esecuzione → la build appena installata non parte e le
+// migrazioni/novità non hanno effetto finché l'utente non chiude a mano. Quindi: chiudo, attendo, riapro.
+try { run("osascript", ["-e", `tell application "${PRODUCT}" to quit`]); } catch { /* non in esecuzione */ }
+try { run("sleep", ["1.5"]); } catch { /* */ }
+try { run("killall", [PRODUCT]); } catch { /* già chiusa (no-op) */ }
+try { run("sleep", ["0.5"]); } catch { /* */ }
 run("open", [dest]);
-console.log(`\nFatto. ${PRODUCT} v${version} installata e aperta.`);
+console.log(`\nFatto. ${PRODUCT} v${version} installata e aperta (build nuova in primo piano).`);
 console.log("Ricorda: aggiorna docs/STATO.md e CHANGELOG.md.");
