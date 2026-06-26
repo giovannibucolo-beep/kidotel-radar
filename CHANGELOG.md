@@ -2,6 +2,14 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.39] — 2026-06-26
+### Corretto — lista paesi del mondo completa (193 → 207)
+- Mancavano **14 paesi** dalla lista mondiale (`WORLD_COUNTRIES`): Chad, Yemen, Syrian Arab Republic, Eritrea, South Sudan, Central African Republic, Equatorial Guinea, Guinea-Bissau, Sao Tome and Principe, Korea Democratic People's Republic (North Korea), Micronesia, Marshall Islands, Nauru, Tuvalu. Aggiunti con continente e query Nominatim dove serve (Syria, North Korea, Micronesia). Ora «Completa tutti» e il selettore «Aggiungi paese» coprono **207 paesi** = tutto il mondo. Aggiunti anche gli alias di continente per i nomi brevi.
+### Nota — «la scansione riparte sempre dall'inizio (Albania)»
+- **Non è un bug della ripresa**: `resumeIndex` è corretto (cursore vuoto → 0; altrimenti paese successivo) e il cursore si salva dopo ogni paese completato. Il cursore resta vuoto solo se **nessun paese arriva a completarsi** in una sessione → al riavvio riparte dal primo (ora Albania, prima Austria perché la lista è ordinata diversamente). Causa reale: la **scansione si ferma** quando lo schermo va in screen saver (i cicli girano nella WebView, soggetta ad App Nap/throttling). Fix definitivo = scheduler di background in Rust (prossimo intervento); rimedio immediato = screen saver/display «Mai».
+### Verificato
+- `tsc` pulito; **207 paesi**; tutti i 14 aggiunti confermati; anteprima: il selettore Copertura mostra **207 opzioni** inclusi Chad/Yemen/Tuvalu/Nauru/Eritrea/South Sudan/Marshall Islands; 0 errori console; 0 NUL.
+
 ## [0.8.38] — 2026-06-26
 ### Aggiunto — cattura i tag OSM già scaricati (dato a costo zero, #4)
 - La query Overpass è già `out center tags;` → ogni risposta contiene decine di tag che finora **buttavamo** in `parse_elements`. Ora ne salviamo un set **curato** in una nuova colonna `osm_attrs` (JSON): `wheelchair` (accessibilità), `internet_access` (wifi), `swimming_pool`, `brand`/`operator` (catena), `opening_hours`/`seasonal` (stagionalità), `smoking`, `rooms`/`beds`, `breakfast`, indirizzo completo (`addr:street/housenumber/postcode/state/province`). **Zero richieste di rete in più**: è dato reale OSM già in casa.

@@ -241,6 +241,8 @@ const WORLD_COUNTRIES: WorldCountry[] = [
   { n: "Tajikistan", c: "asia" }, { n: "Thailand", c: "asia" }, { n: "Timor-Leste", c: "asia" },
   { n: "Turkmenistan", c: "asia" }, { n: "United Arab Emirates", c: "asia" }, { n: "Uzbekistan", c: "asia" },
   { n: "Viet Nam", c: "asia", q: "Vietnam" },
+  { n: "Korea, Democratic People's Republic of", c: "asia", q: "North Korea" }, { n: "Syrian Arab Republic", c: "asia", q: "Syria" },
+  { n: "Yemen", c: "asia" },
   // AFRICA
   { n: "Algeria", c: "africa" }, { n: "Angola", c: "africa" }, { n: "Benin", c: "africa" },
   { n: "Botswana", c: "africa" }, { n: "Burkina Faso", c: "africa" }, { n: "Burundi", c: "africa" },
@@ -260,6 +262,9 @@ const WORLD_COUNTRIES: WorldCountry[] = [
   { n: "Tanzania, United Republic of", c: "africa", q: "Tanzania" }, { n: "Togo", c: "africa" },
   { n: "Tunisia", c: "africa" }, { n: "Uganda", c: "africa" }, { n: "Zambia", c: "africa" },
   { n: "Zimbabwe", c: "africa" },
+  { n: "Central African Republic", c: "africa" }, { n: "Chad", c: "africa" }, { n: "Equatorial Guinea", c: "africa" },
+  { n: "Eritrea", c: "africa" }, { n: "Guinea-Bissau", c: "africa" }, { n: "Sao Tome and Principe", c: "africa" },
+  { n: "South Sudan", c: "africa" },
   // NORD AMERICA (incl. Caraibi e America Centrale)
   { n: "Antigua and Barbuda", c: "north_america" }, { n: "Aruba", c: "north_america" },
   { n: "Bahamas", c: "north_america" }, { n: "Barbados", c: "north_america" }, { n: "Belize", c: "north_america" },
@@ -284,6 +289,8 @@ const WORLD_COUNTRIES: WorldCountry[] = [
   { n: "Kiribati", c: "oceania" }, { n: "New Caledonia", c: "oceania" }, { n: "New Zealand", c: "oceania" },
   { n: "Palau", c: "oceania" }, { n: "Papua New Guinea", c: "oceania" }, { n: "Samoa", c: "oceania" },
   { n: "Solomon Islands", c: "oceania" }, { n: "Tonga", c: "oceania" }, { n: "Vanuatu", c: "oceania" },
+  { n: "Marshall Islands", c: "oceania" }, { n: "Micronesia, Federated States of", c: "oceania", q: "Federated States of Micronesia" },
+  { n: "Nauru", c: "oceania" }, { n: "Tuvalu", c: "oceania" },
 ];
 // Alias di nomi alternativi che potrebbero essere salvati nel DB (vecchie scansioni) → continente,
 // così la copertura li raggruppa lo stesso invece di buttarli in «(altro)».
@@ -291,7 +298,7 @@ const CONTINENT_ALIASES: Record<string, string> = {
   Turkey: "europe", Russia: "europe", Vietnam: "asia", "South Korea": "asia", Laos: "asia",
   Brunei: "asia", Palestine: "asia", Bolivia: "south_america", Venezuela: "south_america",
   Tanzania: "africa", "Ivory Coast": "africa", "Cape Verde": "africa", "Vatican City": "europe",
-  Curacao: "north_america",
+  Curacao: "north_america", "North Korea": "asia", Syria: "asia", Micronesia: "oceania",
 };
 // Continente per paese — derivato dalla lista canonica + alias. Per raggruppare la Copertura.
 const CONTINENT: Record<string, string> = {

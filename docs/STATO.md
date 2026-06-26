@@ -2,8 +2,14 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.38` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.39` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-26
+
+## Fatto v0.8.39 (2026-06-26) — lista paesi completa (207) + diagnosi ripresa scansione
+- `WORLD_COUNTRIES` da 193 a **207**: aggiunti i 14 mancanti (Chad, Yemen, Syria, Eritrea, South Sudan, Central African Rep., Equatorial Guinea, Guinea-Bissau, Sao Tome, North Korea, Micronesia, Marshall Is., Nauru, Tuvalu) + alias continente. «Completa tutti» e selettore ora coprono tutto il mondo.
+- **«Riparte sempre da Albania»**: NON è bug di ripresa (`resumeIndex` corretto, cursore salvato per paese). Il cursore resta vuoto solo se nessun paese si completa → causa reale = la scansione si FERMA con lo screen saver (cicli in WebView soggetti ad App Nap/throttling). Fix definitivo = **scheduler di background in Rust** (mossa #6, da fare); rimedio subito = screen saver/display «Mai».
+- Verificato: tsc, 207 paesi, anteprima selettore 207 opzioni coi nuovi, 0 errori, 0 NUL.
+- **Aperti**: scheduler background (risolve sia la scansione notturna sia la ripresa); poi freschezza/nuovi segnali. Operativo (tuo): affiliazione, Certified ricorrente.
 
 ## Fatto v0.8.38 (2026-06-26) — cattura i tag OSM già scaricati (dato a costo zero, #4)
 - `parse_elements` ora salva un set curato di tag OSM (wheelchair, internet_access, swimming_pool, brand/operator, opening_hours/seasonal, smoking, rooms/beds, breakfast, addr completo) in `osm_attrs` (JSON). Colonna `osm_attrs TEXT` (migrazione), upsert con COALESCE (non azzera al ri-scan). Zero richieste rete in più. Foundation per dimensioni report (% accessibili/regione) + esclusione catene. Mossa #4 del piano valore.
