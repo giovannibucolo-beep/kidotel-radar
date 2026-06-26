@@ -2,6 +2,13 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.40] — 2026-06-26
+### Corretto — le scansioni si fermavano con lo screen saver (notte + ripresa)
+- **Causa**: i cicli di scansione girano nella WebView; quando parte lo screen saver la finestra è occlusa → App Nap/throttling → i `while` si fermano. Effetti: la scansione non finisce di notte, e il cursore non avanza mai (nessun paese si completa) → «riparte sempre dall'inizio».
+- **Fix**: mentre una scansione è attiva (scoperta/valutazione/stelle) l'app tiene **sveglio il Mac** con `caffeinate -dimsu` (incl. `-u` utente attivo → niente screen saver), rilasciato appena tutte le scansioni finiscono. Nuovo modulo Rust `keepawake` (comandi `keep_awake_start`/`keep_awake_stop`, stato gestito), choke-point unico nel frontend (un `useEffect` sul booleano `covBusy||starsBusy||enriching`). macOS-only, best-effort (se `caffeinate` manca, la scansione prosegue comunque). Risolve sia la scansione notturna sia la ripresa (i paesi ora si completano → il cursore avanza).
+### Verificato
+- `cargo test` 17/17 (compila il modulo + registrazione); `tsc` pulito; 0 NUL. **Verifica OS**: `caffeinate -dimsu -t 86400` avviato → `pmset -g assertions` mostra `PreventUserIdleDisplaySleep` + `PreventUserIdleSystemSleep` attivi; chiuso con `kill` (come `keep_awake_stop`). Anteprima: app monta, 0 errori console. Il `useEffect` è gated sul booleano (niente avvii ripetuti).
+
 ## [0.8.39] — 2026-06-26
 ### Corretto — lista paesi del mondo completa (193 → 207)
 - Mancavano **14 paesi** dalla lista mondiale (`WORLD_COUNTRIES`): Chad, Yemen, Syrian Arab Republic, Eritrea, South Sudan, Central African Republic, Equatorial Guinea, Guinea-Bissau, Sao Tome and Principe, Korea Democratic People's Republic (North Korea), Micronesia, Marshall Islands, Nauru, Tuvalu. Aggiunti con continente e query Nominatim dove serve (Syria, North Korea, Micronesia). Ora «Completa tutti» e il selettore «Aggiungi paese» coprono **207 paesi** = tutto il mondo. Aggiunti anche gli alias di continente per i nomi brevi.

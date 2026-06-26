@@ -2,8 +2,13 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.39` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.40` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-26
+
+## Fatto v0.8.40 (2026-06-26) — scansioni che finiscono di notte (keep-awake) + ripresa risolta
+- Mentre una scansione è attiva (covBusy/starsBusy/enriching) l'app tiene sveglio il Mac con `caffeinate -dimsu` → niente screen saver → finestra non occlusa → i cicli WebView non vengono fermati da App Nap → la scansione finisce di notte E i paesi si completano (cursore avanza → niente più «riparte da Albania»). Modulo Rust `keepawake` (keep_awake_start/stop), choke-point unico (useEffect su booleano). macOS-only, best-effort.
+- Verificato: cargo 17/17, tsc, anteprima monta 0 errori; verifica OS (pmset mostra le assertion PreventUserIdleDisplaySleep/SystemSleep; kill pulito).
+- **Nota**: fix mirato al problema reale (screen saver). Un vero worker di background in Rust (scan anche a finestra nascosta) resta opzione futura. **Prossimo (piano valore)**: freschezza datata, nuove famiglie di segnali. **Operativo (tuo)**: affiliazione, Certified ricorrente.
 
 ## Fatto v0.8.39 (2026-06-26) — lista paesi completa (207) + diagnosi ripresa scansione
 - `WORLD_COUNTRIES` da 193 a **207**: aggiunti i 14 mancanti (Chad, Yemen, Syria, Eritrea, South Sudan, Central African Rep., Equatorial Guinea, Guinea-Bissau, Sao Tome, North Korea, Micronesia, Marshall Is., Nauru, Tuvalu) + alias continente. «Completa tutti» e selettore ora coprono tutto il mondo.

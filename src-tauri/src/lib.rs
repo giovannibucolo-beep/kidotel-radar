@@ -1,11 +1,13 @@
 mod db;
 mod engine;
+mod keepawake;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .manage(keepawake::KeepAwake::default())
         .invoke_handler(tauri::generate_handler![
             engine::discover,
             engine::osm_hotel_count,
@@ -39,6 +41,8 @@ pub fn run() {
             db::import_ai_scores,
             db::open_report,
             db::open_url,
+            keepawake::keep_awake_start,
+            keepawake::keep_awake_stop,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

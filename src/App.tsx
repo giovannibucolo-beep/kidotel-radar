@@ -988,6 +988,15 @@ export default function App() {
     if (settings.theme === "auto") root.removeAttribute("data-theme");
     else root.setAttribute("data-theme", settings.theme);
   }, [settings.theme]);
+  // Mentre una scansione è in corso (scoperta, valutazione o stelle) teniamo sveglio il Mac: niente screen
+  // saver → la finestra non viene occlusa → i cicli non vengono fermati da App Nap e la scansione finisce
+  // anche di notte. Rilasciato appena tutte le scansioni terminano. Dipende dal booleano (niente churn).
+  const scanning = !!covBusy || starsBusy || enriching;
+  useEffect(() => {
+    if (!scanning) return;
+    void invoke("keep_awake_start").catch(() => {});
+    return () => { void invoke("keep_awake_stop").catch(() => {}); };
+  }, [scanning]);
   useEffect(() => {
     refreshStats();
     const id = setInterval(refreshStats, 4000); // barra di avanzamento sempre aggiornata
