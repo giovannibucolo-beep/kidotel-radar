@@ -44,6 +44,14 @@ pub fn run() {
             keepawake::keep_awake_start,
             keepawake::keep_awake_stop,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            // All'uscita dell'app, chiudi l'eventuale `caffeinate` in corso (niente processo orfano che
+            // tiene sveglio il Mac dopo la chiusura durante una scansione).
+            if let tauri::RunEvent::Exit = event {
+                use tauri::Manager;
+                let _ = keepawake::keep_awake_stop(app_handle.state());
+            }
+        });
 }

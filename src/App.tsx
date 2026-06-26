@@ -990,12 +990,21 @@ export default function App() {
   }, [settings.theme]);
   // Mentre una scansione è in corso (scoperta, valutazione o stelle) teniamo sveglio il Mac: niente screen
   // saver → la finestra non viene occlusa → i cicli non vengono fermati da App Nap e la scansione finisce
-  // anche di notte. Rilasciato appena tutte le scansioni terminano. Dipende dal booleano (niente churn).
+  // anche di notte. Rilasciato appena tutte le scansioni terminano.
+  // Le invoke start/stop sono SERIALIZZATE (catena di promesse) e DEDUPLICATE su `kaState`: così non c'è
+  // la corsa fire-and-forget che lasciava un `caffeinate` orfano (Mac sveglio anche a riposo).
   const scanning = !!covBusy || starsBusy || enriching;
+  const kaState = useRef(false);
+  const kaChain = useRef<Promise<void>>(Promise.resolve());
   useEffect(() => {
-    if (!scanning) return;
-    void invoke("keep_awake_start").catch(() => {});
-    return () => { void invoke("keep_awake_stop").catch(() => {}); };
+    const want = scanning;
+    kaChain.current = kaChain.current.then(async () => {
+      if (want === kaState.current) return; // già nello stato voluto
+      try {
+        await invoke(want ? "keep_awake_start" : "keep_awake_stop");
+        kaState.current = want;
+      } catch { /* best-effort: la scansione prosegue comunque */ }
+    });
   }, [scanning]);
   useEffect(() => {
     refreshStats();

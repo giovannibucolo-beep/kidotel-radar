@@ -2,8 +2,12 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.40` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Versione:** `0.8.41` (installata su macOS) + connettore MCP `kidotel-mcp`
 - **Aggiornato:** 2026-06-26
+
+## Fatto v0.8.41 (2026-06-26) — keep-awake leak-proof (niente caffeinate orfano)
+- v0.8.40 lasciava un `caffeinate` attivo anche a riposo (corsa fire-and-forget tra start/stop → Mac sveglio sempre). Fix: chiamate keep-awake serializzate (catena di promesse) + dedup su stato locale → segue esattamente «scan attiva sì/no»; + `RunEvent::Exit` chiude il caffeinate alla chiusura app (niente orfano).
+- Verificato (Mac reale): caffeinate figlio dell'app a riposo, dopo kill non re-spawna (= leak confermato e ora prevenuto); cargo build ok, tsc, 0 NUL.
 
 ## Fatto v0.8.40 (2026-06-26) — scansioni che finiscono di notte (keep-awake) + ripresa risolta
 - Mentre una scansione è attiva (covBusy/starsBusy/enriching) l'app tiene sveglio il Mac con `caffeinate -dimsu` → niente screen saver → finestra non occlusa → i cicli WebView non vengono fermati da App Nap → la scansione finisce di notte E i paesi si completano (cursore avanza → niente più «riparte da Albania»). Modulo Rust `keepawake` (keep_awake_start/stop), choke-point unico (useEffect su booleano). macOS-only, best-effort.

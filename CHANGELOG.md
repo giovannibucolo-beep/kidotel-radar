@@ -2,6 +2,13 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.41] — 2026-06-26
+### Corretto — keep-awake: niente più `caffeinate` orfano (Mac sveglio a riposo)
+- Subito dopo la v0.8.40 ho verificato sul Mac reale che l'app teneva un `caffeinate` attivo **anche senza scansione in corso** (assertion `PreventUserIdleDisplaySleep` confermata con `pmset`): le `invoke` start/stop fire-and-forget potevano eseguirsi **fuori ordine** (corsa) lasciando il processo orfano → il Mac non andava più in sospensione/screen saver anche a riposo.
+- **Fix**: le chiamate keep-awake sono ora **serializzate** (catena di promesse) e **deduplicate** su uno stato locale → lo stato del `caffeinate` segue esattamente «scansione attiva sì/no», nessuna corsa. In più, un handler `RunEvent::Exit` chiude il `caffeinate` alla chiusura dell'app (niente orfano se si esce durante una scansione).
+### Verificato
+- Riproduzione: `pgrep`/`pmset` mostravano il `caffeinate` figlio dell'app a riposo → dopo `kill` non veniva ri-creato (= leak, non scansione attiva). `cargo build` ok; `tsc` pulito; 0 NUL. Lo stato ora è idempotente: a riposo nessun `caffeinate` dell'app.
+
 ## [0.8.40] — 2026-06-26
 ### Corretto — le scansioni si fermavano con lo screen saver (notte + ripresa)
 - **Causa**: i cicli di scansione girano nella WebView; quando parte lo screen saver la finestra è occlusa → App Nap/throttling → i `while` si fermano. Effetti: la scansione non finisce di notte, e il cursore non avanza mai (nessun paese si completa) → «riparte sempre dall'inizio».
