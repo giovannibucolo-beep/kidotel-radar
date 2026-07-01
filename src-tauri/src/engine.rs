@@ -910,6 +910,10 @@ pub struct EnrichResult {
     pub pages_fetched: u32,
     pub family_fit_score: u32,
     pub signals: Vec<SignalResult>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub facilities: Vec<Facility>,
 }
 
 #[derive(Deserialize)]
@@ -1098,6 +1102,162 @@ pub fn score_pages(pages: &[(String, String)]) -> (u32, Vec<SignalResult>) {
         });
     }
     (score, signals)
+}
+
+// ---------- OPZIONE A: descrizione + facilities NOMINATE + fasce d'età ----------
+// Come kidotel.co (che pesca dal feed OTA), ma tutto ESTRATTO VERBATIM dal sito ufficiale dell'hotel:
+// niente prosa inventata. Serve ad arricchire la banca dati (campo `description` + lista `facilities`).
+
+#[derive(serde::Serialize, Clone)]
+pub struct Facility {
+    pub category: String,      // il segnale famiglia (kids_club, kids_facilities, …)
+    pub name: String,          // il termine ESATTO trovato sul sito (es. "Kids Club", "Mini Golf")
+    pub quote: Option<String>, // la frase da cui è estratto (prova verbatim)
+    pub url: Option<String>,   // la pagina dove compare
+    pub age: Option<String>,   // fascia d'età, se dichiarata vicino al servizio (es. "3-12 years")
+}
+
+fn prettify_term(t: &str) -> String {
+    t.split_whitespace()
+        .map(|w| {
+            let mut c = w.chars();
+            match c.next() {
+                Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+// Cerca una fascia d'età dichiarata nella frase (es. "from 2 to 12 years", "4-12 anni", "от 3 лет").
+// Ritorna la sottostringa VERBATIM (minuscola) quando trova una cifra entro ~24 byte prima di un'unità d'età.
+pub fn detect_age(sent: &str) -> Option<String> {
+    let low = sent.to_lowercase();
+    let bytes = low.as_bytes();
+    const UNITS: &[&str] = &[
+        "years", "year", "yrs", "anni", "anno", "ans", "jahren", "jahre", "лет", "года", "год", "лi",
+    ];
+    for unit in UNITS {
+        let mut from = 0usize;
+        while let Some(pos) = low[from..].find(unit) {
+            let ustart = from + pos;
+            let uend = ustart + unit.len();
+            let wstart = ustart.saturating_sub(24);
+            // cerca la prima cifra ASCII nella finestra prima dell'unità (i byte di continuazione UTF-8
+            // sono >= 0x80, mai una cifra ASCII → nessun falso positivo, e dstart cade su un confine char)
+            if let Some(doff) = bytes[wstart..ustart].iter().position(|b| b.is_ascii_digit()) {
+                let dstart = wstart + doff;
+                let cand = low[dstart..uend].trim().to_string();
+                if cand.chars().count() <= 40 {
+                    return Some(cand);
+                }
+            }
+            from = uend;
+        }
+    }
+    None
+}
+
+// Prende una descrizione REALE (frase verbatim) dal sito: la prima frase "di presentazione" dell'hotel.
+pub fn extract_description(pages: &[(String, String)]) -> Option<String> {
+    const CUES: &[&str] = &[
+        "hotel", "resort", "family", "families", "children", "kids", "welcome", "located",
+        "situated", "offers", "nestled", "beach", "villa", "surrounded", "ideal for", "situato",
+        "famiglie", "bambini", "offre", "расположен", "семьи", "детей", "отель",
+    ];
+    let mut fallback: Option<String> = None;
+    for (_url, text) in pages {
+        for s in split_sentences(text) {
+            let n = s.chars().count();
+            if n < 60 || n > 320 {
+                continue;
+            }
+            let sl = s.to_lowercase();
+            if sl.contains("cookie") || sl.contains("privacy") || sl.contains("©")
+                || sl.contains("all rights") || sl.contains("copyright")
+            {
+                continue;
+            }
+            let cues = CUES.iter().filter(|c| sl.contains(**c)).count();
+            if cues >= 2 {
+                return Some(cap(&s, 320));
+            }
+            if fallback.is_none() && cues >= 1 {
+                fallback = Some(cap(&s, 320));
+            }
+        }
+    }
+    fallback
+}
+
+// Estrae la lista delle facilities NOMINATE (per categoria), con prova e fascia d'età quando presente.
+pub fn extract_facilities(pages: &[(String, String)]) -> Vec<Facility> {
+    let cfg = signals_cfg();
+    let tagged: Vec<(String, String)> = pages
+        .iter()
+        .flat_map(|(u, t)| split_sentences(t).into_iter().map(move |s| (s, u.clone())))
+        .collect();
+    // adults-only → nessuna facility per bambini
+    if !cfg.adults_only_patterns.is_empty() {
+        for (sent, _u) in &tagged {
+            let sl = sent.to_lowercase();
+            if cfg.adults_only_patterns.iter().any(|p| sl.contains(p.as_str()))
+                && verify_verbatim(sent, pages)
+            {
+                return Vec::new();
+            }
+        }
+    }
+    let mut out: Vec<Facility> = Vec::new();
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for def in &cfg.signals {
+        if def.patterns.is_empty() {
+            continue;
+        }
+        let mut per_cat = 0u32;
+        for (sent, url) in &tagged {
+            if per_cat >= 6 {
+                break;
+            }
+            let sl = sent.to_lowercase();
+            if cfg.exclude_patterns.iter().any(|x| sl.contains(x.as_str())) {
+                continue;
+            }
+            if !verify_verbatim(sent, pages) {
+                continue;
+            }
+            let age = detect_age(sent);
+            for p in &def.patterns {
+                if p.chars().count() < 4 {
+                    continue;
+                }
+                if sl.contains(p.as_str()) {
+                    let dedup = format!("{}|{}", def.key, p);
+                    if seen.insert(dedup) {
+                        out.push(Facility {
+                            category: def.key.clone(),
+                            name: prettify_term(p),
+                            quote: Some(cap(sent, 200)),
+                            url: Some(url.clone()),
+                            age: age.clone(),
+                        });
+                        per_cat += 1;
+                        if per_cat >= 6 {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    out.truncate(40);
+    out
+}
+
+// Comodità: descrizione + facilities in un colpo, dalle pagine già scaricate.
+pub fn extract_content(pages: &[(String, String)]) -> (Option<String>, Vec<Facility>) {
+    (extract_description(pages), extract_facilities(pages))
 }
 
 // Estrae un'email di contatto plausibile dall'HTML grezzo (cattura anche i mailto: e i JSON-LD).
@@ -1441,6 +1601,8 @@ pub async fn enrich_hotel(app: tauri::AppHandle, args: EnrichArgs) -> Result<Enr
                 pages_fetched: 0,
                 family_fit_score: 0,
                 signals: absent_signals(),
+                description: None,
+                facilities: Vec::new(),
             })
         }
     };
@@ -1458,10 +1620,12 @@ pub async fn enrich_hotel(app: tauri::AppHandle, args: EnrichArgs) -> Result<Enr
     };
     let website_ok = !pages.is_empty();
     let (score, signals) = score_pages(&pages);
+    let (description, facilities) = extract_content(&pages);
 
     {
         let conn = crate::db::open_db(&app)?;
         let breakdown = serde_json::to_string(&signals).unwrap_or_else(|_| "[]".to_string());
+        let facilities_json = serde_json::to_string(&facilities).unwrap_or_else(|_| "[]".to_string());
         let enrichment = serde_json::json!({
             "website_ok": website_ok,
             "pages_fetched": pages.len(),
@@ -1475,6 +1639,7 @@ pub async fn enrich_hotel(app: tauri::AppHandle, args: EnrichArgs) -> Result<Enr
             &breakdown,
             &enrichment,
         )?;
+        crate::db::update_content(&conn, &args.osm_type, args.osm_id, description.as_deref(), &facilities_json)?;
         // email trovata sul sito → la salviamo se non c'era già (dato reale, per il CRM).
         if let Some(em) = &found_email {
             let _ = crate::db::set_email_if_absent(&conn, &args.osm_type, args.osm_id, em);
@@ -1490,6 +1655,8 @@ pub async fn enrich_hotel(app: tauri::AppHandle, args: EnrichArgs) -> Result<Enr
         pages_fetched: pages.len() as u32,
         family_fit_score: score,
         signals,
+        description,
+        facilities,
     })
 }
 
@@ -1501,7 +1668,7 @@ pub async fn enrich_hotel(app: tauri::AppHandle, args: EnrichArgs) -> Result<Enr
 pub async fn score_website(website: String) -> Result<EnrichResult, String> {
     let w = website.trim();
     if w.is_empty() {
-        return Ok(EnrichResult { website_ok: false, pages_fetched: 0, family_fit_score: 0, signals: absent_signals() });
+        return Ok(EnrichResult { website_ok: false, pages_fetched: 0, family_fit_score: 0, signals: absent_signals(), description: None, facilities: Vec::new() });
     }
     // se manca lo schema, anteponi https:// (il cliente può incollare "hotel.com")
     let url = if w.starts_with("http://") || w.starts_with("https://") { w.to_string() } else { format!("https://{w}") };
@@ -1518,7 +1685,8 @@ pub async fn score_website(website: String) -> Result<EnrichResult, String> {
     };
     let website_ok = !pages.is_empty();
     let (score, signals) = score_pages(&pages);
-    Ok(EnrichResult { website_ok, pages_fetched: pages.len() as u32, family_fit_score: score, signals })
+    let (description, facilities) = extract_content(&pages);
+    Ok(EnrichResult { website_ok, pages_fetched: pages.len() as u32, family_fit_score: score, signals, description, facilities })
 }
 
 #[derive(Serialize)]
@@ -1587,8 +1755,10 @@ pub async fn enrich_batch(app: tauri::AppHandle, limit: Option<i64>) -> Result<E
             let website_ok = !pages.is_empty();
             let pages_fetched = pages.len() as u32;
             let (score, signals) = score_pages(&pages);
+            let (description, facilities) = extract_content(&pages);
+            let facilities_json = serde_json::to_string(&facilities).unwrap_or_else(|_| "[]".to_string());
             let price = price.map(|p| (p.tier, p.eur, p.src)); // appiattisci PriceHit (PriceHit non è Send-trasparente nel tuple)
-            (ot, oid, website_ok, pages_fetched, score, signals, email, price)
+            (ot, oid, website_ok, pages_fetched, score, signals, email, price, description, facilities_json)
         }));
     }
     let mut scored = Vec::new();
@@ -1602,13 +1772,14 @@ pub async fn enrich_batch(app: tauri::AppHandle, limit: Option<i64>) -> Result<E
     let remaining: i64 = {
         let mut conn = crate::db::open_db(&app)?;
         let tx = conn.transaction().map_err(|e| e.to_string())?;
-        for (ot, oid, website_ok, pages_fetched, score, signals, email, price) in &scored {
+        for (ot, oid, website_ok, pages_fetched, score, signals, email, price, description, facilities_json) in &scored {
             let breakdown = serde_json::to_string(signals).unwrap_or_else(|_| "[]".to_string());
             let enrichment = serde_json::json!({ "website_ok": website_ok, "pages_fetched": pages_fetched }).to_string();
             tx.execute(
-                "UPDATE hotels SET family_fit_score=?3, score_breakdown=?4, enrichment=?5, updated_at=datetime('now')
+                "UPDATE hotels SET family_fit_score=?3, score_breakdown=?4, enrichment=?5,
+                    description=?6, facilities=?7, updated_at=datetime('now')
                  WHERE osm_type=?1 AND osm_id=?2",
-                rusqlite::params![ot, oid, score, breakdown, enrichment],
+                rusqlite::params![ot, oid, score, breakdown, enrichment, description, facilities_json],
             )
             .map_err(|e| e.to_string())?;
             if let Some(em) = email {
@@ -1636,7 +1807,7 @@ pub async fn enrich_batch(app: tauri::AppHandle, limit: Option<i64>) -> Result<E
 
     let results = scored
         .into_iter()
-        .map(|(ot, oid, website_ok, pages_fetched, score, signals, _, _)| EnrichOne {
+        .map(|(ot, oid, website_ok, pages_fetched, score, signals, _, _, _, _)| EnrichOne {
             id: format!("{ot}/{oid}"),
             website_ok,
             pages_fetched,
@@ -1770,6 +1941,66 @@ mod tests {
             );
             assert!(r.website_ok, "sito raggiungibile");
             assert!(r.family_fit_score > 0, "un family hotel reale deve avere punteggio > 0");
+        });
+    }
+
+    // Opzione A: descrizione verbatim + facilities NOMINATE per categoria + fascia d'età dal sito ufficiale.
+    #[test]
+    fn extracts_description_named_facilities_and_age() {
+        let pages = vec![(
+            "https://hotel.example/family".to_string(),
+            "Welcome to Cormoran Hotel & Residence, a 4-star family resort located on a private beach in Sardinia, ideal for families with children. \
+             Our free supervised kids club is open daily for children from 3 to 12 years. \
+             Guests enjoy a children's pool and an outdoor playground. \
+             Babysitting services are available on request."
+                .to_string(),
+        )];
+        let (desc, facs) = extract_content(&pages);
+        let d = desc.expect("descrizione estratta dal sito");
+        assert!(d.to_lowercase().contains("family"), "descrizione inattesa: {d}");
+        assert!(verify_verbatim(&d, &pages), "la descrizione deve esistere verbatim nel sito");
+        assert!(
+            facs.iter().any(|f| f.category == "kids_club" && f.name.to_lowercase().contains("kids club")),
+            "manca la facility NOMINATA 'Kids Club'"
+        );
+        assert!(
+            facs.iter().any(|f| f.name.to_lowercase().contains("playground")),
+            "manca la facility NOMINATA 'Playground'"
+        );
+        assert!(
+            facs.iter().any(|f| f.age.as_deref().map(|a| a.contains('3') && a.contains("12")).unwrap_or(false)),
+            "manca la fascia d'età sulla facility: {:?}",
+            facs.iter().map(|f| (f.name.clone(), f.age.clone())).collect::<Vec<_>>()
+        );
+        // ogni facility deve portare la sua prova verbatim
+        assert!(facs.iter().all(|f| f.quote.as_deref().map(|q| verify_verbatim(q, &pages)).unwrap_or(false)));
+        // rilevamento fascia d'età, multilingue
+        assert_eq!(detect_age("open for children from 3 to 12 years").as_deref(), Some("3 to 12 years"));
+        assert_eq!(detect_age("miniclub per bambini da 4 a 11 anni").as_deref(), Some("4 a 11 anni"));
+        assert!(detect_age("nessuna fascia indicata qui").is_none());
+        // un hotel solo-adulti non deve produrre facilities per bambini
+        let adult = vec![("https://x/".to_string(), "This is a strictly adults only resort, no children allowed.".to_string())];
+        assert!(extract_facilities(&adult).is_empty());
+    }
+
+    // CONFRONTO REALE (opzione A): `cargo test -- --ignored live_extract_content --nocapture`
+    // Esegue l'intera pipeline reale (fetch → parse → estrazione) sul sito UFFICIALE dell'hotel e
+    // stampa description + facilities nominate, così si confronta col dato di kidotel.co.
+    #[test]
+    #[ignore]
+    fn live_extract_content() {
+        tauri::async_runtime::block_on(async {
+            let r = super::score_website("https://www.hotel-cormoran.com/en/".to_string()).await.unwrap();
+            println!("\n=== RADAR (sito ufficiale) — Cormoran Hotel & Residence ===");
+            println!("website_ok {} · pagine {} · family-fit {}/100", r.website_ok, r.pages_fetched, r.family_fit_score);
+            println!("DESCRIPTION: {:?}", r.description);
+            println!("FACILITIES ({}):", r.facilities.len());
+            for f in &r.facilities {
+                println!("  [{}] {}{}  ← «{}»", f.category, f.name,
+                    f.age.as_deref().map(|a| format!(" (età: {a})")).unwrap_or_default(),
+                    f.quote.as_deref().unwrap_or(""));
+            }
+            assert!(r.website_ok, "sito ufficiale raggiungibile");
         });
     }
 

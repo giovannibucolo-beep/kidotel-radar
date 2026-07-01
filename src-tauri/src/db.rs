@@ -77,6 +77,8 @@ fn migrate(conn: &Connection) {
         "price_eur INTEGER",     // prezzo a notte (≈ EUR) quando il sito pubblica una fascia numerica
         "price_src TEXT",        // prova: il valore priceRange citato verbatim dal sito
         "osm_attrs TEXT",        // JSON dei tag OSM utili già scaricati (wheelchair, brand/operator, piscina, orari, indirizzo)
+        "description TEXT",      // descrizione VERBATIM estratta dal sito ufficiale (opzione A: come kidotel.co, ma provata)
+        "facilities TEXT",       // JSON delle facilities NOMINATE per categoria (nome + prova + url + fascia d'età)
     ] {
         let _ = conn.execute(&format!("ALTER TABLE hotels ADD COLUMN {col}"), []);
     }
@@ -368,6 +370,23 @@ pub fn update_enrichment(
     Ok(())
 }
 
+// Opzione A: descrizione VERBATIM + facilities NOMINATE estratte dal sito ufficiale. Separata da
+// update_enrichment così il percorso punteggi-AI (import_ai_scores) NON sovrascrive questi campi.
+pub fn update_content(
+    conn: &Connection,
+    osm_type: &str,
+    osm_id: i64,
+    description: Option<&str>,
+    facilities_json: &str,
+) -> Result<(), String> {
+    conn.execute(
+        "UPDATE hotels SET description = ?3, facilities = ?4 WHERE osm_type = ?1 AND osm_id = ?2",
+        params![osm_type, osm_id, description, facilities_json],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[tauri::command]
 pub fn export_backup(app: AppHandle, path: String) -> Result<(), String> {
     let src = db_path(&app)?;
@@ -408,6 +427,8 @@ pub struct HotelRow {
     pub price_tier: Option<i64>,
     pub price_eur: Option<i64>,
     pub price_src: Option<String>,
+    pub description: Option<String>,
+    pub facilities: Option<String>,
 }
 
 fn row_to_hotel(r: &rusqlite::Row) -> rusqlite::Result<HotelRow> {
@@ -437,13 +458,15 @@ fn row_to_hotel(r: &rusqlite::Row) -> rusqlite::Result<HotelRow> {
         price_tier: r.get(22)?,
         price_eur: r.get(23)?,
         price_src: r.get(24)?,
+        description: r.get(25)?,
+        facilities: r.get(26)?,
     })
 }
 
 const HOTEL_COLS: &str = "osm_type, osm_id, name, city, country, website, phone, lat, lon, source,
     family_fit_score, score_breakdown, enrichment, region, province,
     email, contact_status, contact_note, contact_updated, email_status, stars, luxury,
-    price_tier, price_eur, price_src";
+    price_tier, price_eur, price_src, description, facilities";
 
 // Cerca/elenca dall'archivio. `search` filtra per nome/città/provincia/regione/paese (tutti i record).
 #[tauri::command]
@@ -835,6 +858,7 @@ pub fn import_ai_scores(app: AppHandle, path: String) -> Result<usize, String> {
             r.breakdown.to_string()
         };
         let enrichment = serde_json::json!({ "website_ok": true, "source": "ai-cowork" }).to_string();
+        // percorso punteggi-AI: non tocca description/facilities (restano quelle già estratte dal sito).
         update_enrichment(&conn, &otype, oid, score, &breakdown, &enrichment)?;
         n += 1;
     }

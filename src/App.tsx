@@ -75,6 +75,8 @@ type Hotel = {
   price_tier?: number | null; // fascia di costo REALE dal sito (priceRange) 1–5
   price_eur?: number | null;  // prezzo a notte (≈ EUR) quando il sito lo pubblica
   price_src?: string | null;  // prova: il valore priceRange citato dal sito
+  description?: string | null; // descrizione VERBATIM dal sito ufficiale (opzione A)
+  facilities?: string | null;  // JSON facilities nominate [{category,name,quote,url,age}]
 };
 
 type DiscoverResult = { area_label: string; count: number; hotels: Hotel[] };
@@ -106,7 +108,12 @@ type HotelRow = {
   price_tier: number | null;
   price_eur: number | null;
   price_src: string | null;
+  description: string | null;
+  facilities: string | null; // JSON: [{category,name,quote,url,age}] estratto verbatim dal sito
 };
+
+// Facility nominata (opzione A): come la serializza il backend in `facilities`.
+type Facility = { category: string; name: string; quote?: string | null; url?: string | null; age?: string | null };
 
 // Riga LEGGERA per il CRM (corrisponde a CrmRow lato Rust): solo i campi utili all'acquisizione,
 // così si carica TUTTO l'archivio contattabile (non solo i primi 5000) senza trasferire i breakdown.
@@ -143,6 +150,8 @@ type EnrichResult = {
   pages_fetched: number;
   family_fit_score: number;
   signals: SignalResult[];
+  description?: string | null; // opzione A: descrizione verbatim dal sito (FaaS) o riportata dal DB
+  facilities?: Facility[];     // opzione A: facilities nominate (FaaS) o dal DB (parsate da HotelRow.facilities)
 };
 // Risultato del comando enrich_batch: un blocco di hotel valutati in una volta sola.
 type EnrichOne = EnrichResult & { id: string };
@@ -466,7 +475,12 @@ function hotelRowToHotel(r: HotelRow): Hotel {
     website: r.website, phone: r.phone, email: r.email, email_status: r.email_status,
     source: r.source || "OpenStreetMap", lat: r.lat, lon: r.lon, stars: r.stars, luxury: r.luxury,
     price_tier: r.price_tier, price_eur: r.price_eur, price_src: r.price_src,
+    description: r.description, facilities: r.facilities,
   };
+}
+function parseFacilities(json: string | null | undefined): Facility[] {
+  if (!json) return [];
+  try { const v = JSON.parse(json); return Array.isArray(v) ? (v as Facility[]) : []; } catch { return []; }
 }
 function breakdownToSc(r: HotelRow): EnrichResult | undefined {
   if (r.family_fit_score === null || !r.score_breakdown) return undefined;
@@ -474,7 +488,7 @@ function breakdownToSc(r: HotelRow): EnrichResult | undefined {
   try { signals = JSON.parse(r.score_breakdown); } catch { /* */ }
   let website_ok = true;
   try { if (r.enrichment) website_ok = JSON.parse(r.enrichment).website_ok ?? true; } catch { /* */ }
-  return { website_ok, pages_fetched: 0, family_fit_score: r.family_fit_score, signals };
+  return { website_ok, pages_fetched: 0, family_fit_score: r.family_fit_score, signals, description: r.description, facilities: parseFacilities(r.facilities) };
 }
 
 // Apre un link nel browser/app di sistema. Nel webview Tauri un <a target="_blank"> non apre
@@ -602,6 +616,7 @@ export default function App() {
         website: r.website, phone: r.phone, email: r.email, email_status: r.email_status,
         source: r.source || "OpenStreetMap", lat: r.lat, lon: r.lon, stars: r.stars, luxury: r.luxury,
         price_tier: r.price_tier, price_eur: r.price_eur, price_src: r.price_src,
+        description: r.description, facilities: r.facilities,
       });
       const status = (r.contact_status as ContactStatus) || "da_contattare";
       ct[`${r.osm_type}/${r.osm_id}`] = { status, note: r.contact_note || "" };
@@ -610,7 +625,7 @@ export default function App() {
         try { signals = JSON.parse(r.score_breakdown); } catch { /* ignore */ }
         let website_ok = true;
         try { if (r.enrichment) website_ok = JSON.parse(r.enrichment).website_ok ?? true; } catch { /* ignore */ }
-        sc[`${r.osm_type}/${r.osm_id}`] = { website_ok, pages_fetched: 0, family_fit_score: r.family_fit_score, signals };
+        sc[`${r.osm_type}/${r.osm_id}`] = { website_ok, pages_fetched: 0, family_fit_score: r.family_fit_score, signals, description: r.description, facilities: parseFacilities(r.facilities) };
       }
     }
     setHotels(hs);
@@ -1221,6 +1236,8 @@ export default function App() {
         lat: h.lat, lon: h.lon,
         website: h.website, email: h.email, email_status: h.email_status, phone: h.phone,
         contact_status: h.contact_status, contact_note: h.contact_note,
+        description: h.description || null,
+        facilities: parseFacilities(h.facilities),
         proof: breakdown.filter((s) => s.present).map((s) => ({ signal: s.key, quote: s.quote })),
       };
     });
@@ -1252,6 +1269,12 @@ export default function App() {
         price_tier: h.price_tier ? { tier: h.price_tier, note: "Kidotel estimate — not an OTA price" } : null,
         // feature come FATTI (la chiave; il sito la localizza), con un'etichetta EN d'appoggio
         features: present.map((s) => ({ key: s.key, label_en: EN_SIGNAL[s.key] || s.key })),
+        // OPZIONE A: descrizione VERBATIM + facilities NOMINATE (nome reale dal sito + prova + fascia d'età)
+        description: h.description || null,
+        facilities: parseFacilities(h.facilities).map((f) => ({
+          category: f.category, name: f.name, age: f.age || null,
+          quote: f.quote ? shortQuote(f.quote) : null, source: f.url || h.website || null,
+        })),
         // prova: citazione BREVE attribuita con la pagina-fonte
         proof: present.filter((s) => s.quote).map((s) => ({ signal: s.key, quote: shortQuote(s.quote as string), source: s.url || h.website || null })),
         claim_url: claimUrl(base, h, h.family_fit_score, lang),
@@ -2282,9 +2305,23 @@ function ProofPanel({ sc, t, lang }: { sc: EnrichResult; t: (k: TKey) => string;
   if (!sc.website_ok) return <div className="proof"><div className="proof-empty">{t("proof.nosite")}</div></div>;
   const present = sc.signals.filter((s) => s.present);
   const absent = sc.signals.filter((s) => !s.present);
+  const facilities = sc.facilities ?? [];
   return (
     <div className="proof">
       <div className="proof-title">{t("proof.title")}</div>
+      {sc.description && <div className="proof-desc">“{sc.description}”</div>}
+      {facilities.length > 0 && (
+        <div className="proof-fac">
+          <div className="proof-fac-lab">{t("proof.facilities")}</div>
+          <div className="proof-fac-chips">
+            {facilities.map((f, i) => (
+              <span className="fac-chip" key={f.category + f.name + i} title={f.quote || undefined}>
+                {f.name}{f.age ? <span className="fac-age"> · {f.age}</span> : null}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
       {present.length === 0 && <div className="proof-empty">{t("proof.none")}</div>}
       {present.map((s) => (
         <div className="proof-item" key={s.key}>

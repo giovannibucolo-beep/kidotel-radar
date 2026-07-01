@@ -2,6 +2,15 @@
 
 Tutte le modifiche rilevanti. Formato: [versione] — data.
 
+## [0.8.42] — 2026-07-01
+### Aggiunto — Opzione A: descrizione + facilities NOMINATE + fasce d'età dal sito ufficiale
+- Radar ora estrae e archivia, oltre al punteggio e ai segnali-categoria, anche una **descrizione** (frase di presentazione VERBATIM dal sito) e la lista delle **facilities nominate** (nome reale del servizio, es. «Mini Club», «Young Club», + prova citata + URL + fascia d'età quando dichiarata). Nasce dalla domanda di Vova: kidotel.co mostra descrizioni e nomi delle facilities (dal feed OTA Expedia), Radar prima teneva solo categorie+prova. Ora la banca dati può alimentare il sito con lo stesso tipo di dato, ma **provato** dal sito ufficiale.
+- **Backend** (`engine.rs`): nuove `extract_description`/`extract_facilities`/`detect_age` (fasce d'età multilingue: `years/anni/ans/jahre/лет…`), struct `Facility`; scritte in enrich singolo e batch; anche il comando FaaS `score_website` le restituisce. **DB** (`db.rs`): colonne `description` + `facilities` (migrazione additiva) e `update_content` separata (i punteggi-AI non le sovrascrivono).
+- **UI**: il pannello «Prova» mostra la descrizione e i **chip delle facilities nominate** (con fascia d'età e la citazione in tooltip). Chiave i18n `proof.facilities` in IT/EN/RU.
+- **Export**: il feed per kidotel.co (`rowsToFeed`) e l'export JSON includono `description` + `facilities` (nome + fascia + citazione breve + fonte).
+### Verificato
+- `cargo test` 18/18 verde (nuovo `extracts_description_named_facilities_and_age`: descrizione verbatim, facilities per categoria, fascia d'età, gate adults-only). CONFRONTO REALE sul sito ufficiale (`live_extract_content` su hotel-cormoran.com): Radar cattura descrizione verbatim + «Mini Club»/«Young Club» con prova. `tsc` pulito.
+
 ## [0.8.41] — 2026-06-26
 ### Corretto — keep-awake: niente più `caffeinate` orfano (Mac sveglio a riposo)
 - Subito dopo la v0.8.40 ho verificato sul Mac reale che l'app teneva un `caffeinate` attivo **anche senza scansione in corso** (assertion `PreventUserIdleDisplaySleep` confermata con `pmset`): le `invoke` start/stop fire-and-forget potevano eseguirsi **fuori ordine** (corsa) lasciando il processo orfano → il Mac non andava più in sospensione/screen saver anche a riposo.
