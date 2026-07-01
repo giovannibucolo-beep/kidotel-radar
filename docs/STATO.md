@@ -2,8 +2,13 @@
 
 > Dove siamo adesso. Aggiornare **a ogni sessione/release**, prima di dire "fatto".
 
-- **Versione:** `0.8.41` (installata su macOS) + connettore MCP `kidotel-mcp`
-- **Aggiornato:** 2026-06-26
+- **Versione:** `0.8.42` (installata su macOS) + connettore MCP `kidotel-mcp`
+- **Aggiornato:** 2026-07-01
+
+## Fatto v0.8.42 (2026-07-01) — Opzione A: descrizione + facilities NOMINATE dal sito ufficiale
+- Su domanda di Vova (kidotel.co mostra descrizioni + nomi facilities, dal feed OTA Expedia; Radar prima teneva solo categorie+prova): Radar ora estrae e salva **`description`** (frase di presentazione VERBATIM dal sito) e **`facilities`** = lista nominata (nome reale del servizio, es. «Mini Club»/«Young Club», + prova + URL + fascia d'età quando dichiarata). Backend `engine.rs` (`extract_description`/`extract_facilities`/`detect_age` multilingue, struct `Facility`; scritte in enrich singolo+batch; il FaaS `score_website` le ritorna). DB `db.rs` colonne + `update_content` (i punteggi-AI non le sovrascrivono). UI: pannello «Prova» con descrizione + chip facilities (i18n `proof.facilities` IT/EN/RU). Export feed kidotel.co + JSON le includono.
+- Verificato: `cargo test` 18/18 (nuovo test estrazione); CONFRONTO REALE `live_extract_content` su hotel-cormoran.com → descrizione verbatim + «Mini Club»/«Young Club» con prova; `tsc` pulito. Differenza onesta vs sito: Radar riporta SOLO ciò che è verbatim sul sito ufficiale (meno voci del feed OTA, ma provate e coi **nomi reali**).
+- **Nota join**: gli id di kidotel.co (es. 22402) potrebbero non coincidere con `osm_id` (id Expedia vs OSM) → per collegare i due dataset servirà una chiave (nome+città+geo o mappatura). Da chiarire con Vova.
 
 ## Fatto v0.8.41 (2026-06-26) — keep-awake leak-proof (niente caffeinate orfano)
 - v0.8.40 lasciava un `caffeinate` attivo anche a riposo (corsa fire-and-forget tra start/stop → Mac sveglio sempre). Fix: chiamate keep-awake serializzate (catena di promesse) + dedup su stato locale → segue esattamente «scan attiva sì/no»; + `RunEvent::Exit` chiude il caffeinate alla chiusura app (niente orfano).
