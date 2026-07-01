@@ -1,0 +1,10 @@
+# artefatti grezzi/grossi rigenerabili (harvest-site.mjs / match-all.mjs) — non versionati
+site-catalog.json
+site-hotels.jsonl
+harvest-visited.json
+harvest.log
+site-radar-map.json
+site-unmatched.json
+_*.json
+_*.sql
+# versionati: site-radar-map.csv, audit-result.json, match-europe-italy-sardinia.json

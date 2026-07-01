@@ -1,0 +1,27 @@
+{
+  "method": "40-agent adversarial audit (parallel judges, web search on ambiguous pairs), stratified sample of 40 pairs (8 per bucket)",
+  "date": "2026-07-01",
+  "summary": {
+    "citta_high  (citta, conf >= 0.9)":  { "precision_pct": 100, "same": 8, "different": 0, "total": 8 },
+    "citta_mid   (citta, 0.7-0.9)":      { "precision_pct": 63,  "same": 5, "different": 3, "total": 8 },
+    "citta_low   (citta, 0.5-0.7)":      { "precision_pct": 38,  "same": 3, "different": 5, "total": 8 },
+    "paese_high  (paese, conf >= 0.85)": { "precision_pct": 100, "same": 8, "different": 0, "total": 8 },
+    "paese_mid   (paese, 0.75-0.85)":    { "precision_pct": 38,  "same": 3, "different": 5, "total": 8 }
+  },
+  "conclusion": "Reliable AUTO tier = citta conf>=0.9 OR paese conf>=0.85 (~100% precision). All other matches are lower precision (chain-branch / same-city-different-property confusions) and must stay REVIEW.",
+  "falsePositivesFound": [
+    "embassy suites denver International Airport vs Downtown Convention Center — different branches",
+    "mercure hotel hannover City vs Mitte — different branches",
+    "vilnius grand resort (rural spa/golf resort) vs vilnius city hotel (3-star old town) — different properties",
+    "divi southwinds beach resort vs south beach hotel — different Barbados properties",
+    "best western plus hill country suites vs generic 'Best Western Plus' — 5+ BW Plus in San Antonio",
+    "beachside all suites vs grand beach hotel (Miami) — different properties",
+    "hakodate kokusai hotel vs fav hakodate — different properties",
+    "mercure dalat resort vs etape dalat — different properties",
+    "doubletree seattle airport (SeaTac) vs doubletree suites seattle airport-southcenter (Tukwila) — different properties",
+    "sri saveraa residency (Pondicherry) vs isaac's residency (Munnar) — different",
+    "chaidee mansion (Bangkok) vs chatsuridee mansion (Ubon Ratchathani) — different",
+    "agriturismo frontemare (Abruzzo) vs agriturismo barone montefeo (Sicily) — different",
+    "casa rural o vilar (Galicia) vs villa rural alma (Segovia) — different"
+  ]
+}
