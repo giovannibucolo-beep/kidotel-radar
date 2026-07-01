@@ -1,0 +1,234 @@
+{
+  "region": "europe/italy/sardinia",
+  "radarRegion": "Sardinia",
+  "site_count": 24,
+  "radar_count": 705,
+  "matched": 18,
+  "match_rate_pct": 75,
+  "pairs": [
+    {
+      "site_id": 39316,
+      "osm_id": 648982433,
+      "confidence": 0.81,
+      "review": false,
+      "match": "città",
+      "site_name": "villa barbarina nature resort",
+      "radar_name": "Villa Barbarina",
+      "city": "alghero"
+    },
+    {
+      "site_id": 44294,
+      "osm_id": 4211435292,
+      "confidence": 0.64,
+      "review": true,
+      "match": "città",
+      "site_name": "7pines resort sardinia",
+      "radar_name": "Aethos Sardinia",
+      "city": "arzachena"
+    },
+    {
+      "site_id": 40475,
+      "osm_id": 840919379,
+      "confidence": 1,
+      "review": false,
+      "match": "città",
+      "site_name": "jannae sole resort",
+      "radar_name": "Janna 'e Sole Resort",
+      "city": "budoni"
+    },
+    {
+      "site_id": 40340,
+      "osm_id": 934720952,
+      "confidence": 1,
+      "review": false,
+      "match": "città",
+      "site_name": "palazzo doglio",
+      "radar_name": "Palazzo Doglio",
+      "city": "cagliari"
+    },
+    {
+      "site_id": 30073,
+      "osm_id": 2258158380,
+      "confidence": 1,
+      "review": false,
+      "match": "città",
+      "site_name": "brancamaria",
+      "radar_name": "Branca Maria",
+      "city": "cala gonone"
+    },
+    {
+      "site_id": 44073,
+      "osm_id": 12886060762,
+      "confidence": 1,
+      "review": false,
+      "match": "regione",
+      "site_name": "best western hotel blumarea",
+      "radar_name": "Best Western Hotel Blumarea",
+      "city": "castelsardo"
+    },
+    {
+      "site_id": 43165,
+      "osm_id": 908459934,
+      "confidence": 1,
+      "review": false,
+      "match": "città",
+      "site_name": "alma resort",
+      "radar_name": "Alma Resort",
+      "city": "castiadas"
+    },
+    {
+      "site_id": 25292,
+      "osm_id": 3714861792,
+      "confidence": 1,
+      "review": false,
+      "match": "regione",
+      "site_name": "garden beach",
+      "radar_name": "Hotel Garden Beach",
+      "city": "castiadas"
+    },
+    {
+      "site_id": 33318,
+      "osm_id": 276644811,
+      "confidence": 1,
+      "review": false,
+      "match": "regione",
+      "site_name": "hotel don diego",
+      "radar_name": "Hotel Don Diego",
+      "city": "loiri porto san paolo"
+    },
+    {
+      "site_id": 24126,
+      "osm_id": 1889770623,
+      "confidence": 0.86,
+      "review": false,
+      "match": "regione",
+      "site_name": "sa pedra",
+      "radar_name": "Sa Pedrera",
+      "city": "murta maria"
+    },
+    {
+      "site_id": 35506,
+      "osm_id": 102704343,
+      "confidence": 1,
+      "review": false,
+      "match": "città",
+      "site_name": "alba dorata resort",
+      "radar_name": "VILLAGGIO ALBA DORATA",
+      "city": "orosei"
+    },
+    {
+      "site_id": 32987,
+      "osm_id": 161575895,
+      "confidence": 0.5,
+      "review": true,
+      "match": "città",
+      "site_name": "club hotel marina beach",
+      "radar_name": "CLUB HOTEL OROSEI BEACH",
+      "city": "orosei"
+    },
+    {
+      "site_id": 28615,
+      "osm_id": 1777472704,
+      "confidence": 1,
+      "review": false,
+      "match": "città",
+      "site_name": "petra bianca",
+      "radar_name": "Hotel Petra Bianca",
+      "city": "porto cervo"
+    },
+    {
+      "site_id": 22958,
+      "osm_id": 2871493153,
+      "confidence": 0.8,
+      "review": false,
+      "match": "città",
+      "site_name": "colonna grand hotel capo testa",
+      "radar_name": "Hotel Colonna Capo Testa",
+      "city": "santa teresa gallura"
+    },
+    {
+      "site_id": 24044,
+      "osm_id": 3626521462,
+      "confidence": 0.5,
+      "review": true,
+      "match": "città",
+      "site_name": "club esse le tonnare",
+      "radar_name": "Club Esse Roccaruja",
+      "city": "stintino"
+    },
+    {
+      "site_id": 39318,
+      "osm_id": 6588449852,
+      "confidence": 1,
+      "review": false,
+      "match": "città",
+      "site_name": "club esse sporting",
+      "radar_name": "Club Esse Sporting",
+      "city": "stintino"
+    },
+    {
+      "site_id": 34414,
+      "osm_id": 2134874772,
+      "confidence": 1,
+      "review": false,
+      "match": "città",
+      "site_name": "club hotel residence baiaverde",
+      "radar_name": "Club Hotel Residence Baiaverde",
+      "city": "valledoria"
+    },
+    {
+      "site_id": 22402,
+      "osm_id": 3582806450,
+      "confidence": 1,
+      "review": false,
+      "match": "città",
+      "site_name": "cormoran hotel residence",
+      "radar_name": "Hotel Residence Cormoran",
+      "city": "villasimius"
+    }
+  ],
+  "unmatched": [
+    {
+      "site_id": 26652,
+      "name": "li cucutti",
+      "city": "agrustos",
+      "best": "Club Hotel Li Cupulatti Beach",
+      "score": 0.38
+    },
+    {
+      "site_id": 41620,
+      "name": "is serenas badesi resort",
+      "city": "badesi",
+      "best": "AHR Costa Serena Village",
+      "score": 0.44
+    },
+    {
+      "site_id": 29751,
+      "name": "hotel santa gilla",
+      "city": "capoterra",
+      "best": "Hotel Villa Santadi",
+      "score": 0.7
+    },
+    {
+      "site_id": 26693,
+      "name": "cugnana verde residence",
+      "city": "cugnana verde",
+      "best": "Sardegna Hotel",
+      "score": 0.47
+    },
+    {
+      "site_id": 36492,
+      "name": "acqua di mare hotel e resort",
+      "city": "marina di sorso",
+      "best": "Hotel Ariadimari",
+      "score": 0.56
+    },
+    {
+      "site_id": 35502,
+      "name": "romazzino a belmond hotel costa smeralda",
+      "city": "porto cervo",
+      "best": "Grand Hotel Smeralda Beach",
+      "score": 0.44
+    }
+  ]
+}
