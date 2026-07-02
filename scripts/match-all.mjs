@@ -75,6 +75,7 @@ for (const r of radar) {
 // mappa paese-sito -> paese-Radar: alias ISO noti, poi esatto normalizzato, poi fuzzy dice>=0.75.
 // (Radar usa i nomi ISO lunghi: «Korea, Republic of», «Tanzania, United Republic of», «Viet Nam»…)
 const ALIAS = {
+  "turkey": "turkiye", // il DB ha «Türkiye»; il fuzzy (dice 0.55) non basta → alias esplicito (976 hotel del sito!)
   "south korea": "korea republic of", "north korea": "korea democratic peoples republic of",
   "tanzania": "tanzania united republic of", "brunei": "brunei darussalam", "vietnam": "viet nam",
   "russia": "russian federation", "bolivia": "bolivia plurinational state of", "iran": "iran islamic republic of",
